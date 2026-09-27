@@ -46,7 +46,8 @@ Each feature folder holds its own screens, widgets, providers/controllers, and m
 - **Property**: a group of apartments managed together. Has members (staff), not a single owner field.
 - **Apartment**: belongs to a property. Has at most one *active* tenancy at a time (v1 constraint).
 - **Membership**: links a user to a property with a role: `owner`, `manager`, or `caretaker`. Caretakers have a `can_record_payments` boolean toggle.
-- **Tenancy**: links a tenant (user) to an apartment. Stores rent amount, frequency, start/end dates, and a computed `paid_until` date.
+- **Tenant**: a contact (name, phone, email) created by staff for a property. Linked to a user account later, when the tenant signs up and confirms the same email. Tenants who never use the app still work.
+- **Tenancy**: links a tenant contact to an apartment. Stores rent amount, frequency, start/end dates, and a computed `paid_until` date.
 - **Payment**: recorded against a tenancy. Extends `paid_until` by the number of periods paid. Immutable once created — corrections are made via a voiding entry, never an edit or delete.
 - **Receipt**: auto-generated on payment creation, sequential number per property (e.g. `RCT-2026-0001`).
 - **Bill**: a utility bill or task created by staff, assigned to all apartments in a property or specific ones. Each assignment tracks its own status independently.
