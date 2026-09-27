@@ -9,7 +9,7 @@ See [CLAUDE.md](CLAUDE.md) for the domain model, roles and business rules this p
 
 ## Where we are
 
-> **Current phase:** Phase 2: Login and signup (Phases 0 and 1 complete ✅)
+> **Current phase:** Phase 3: Properties and members (built; waiting for your phone test). Email confirmation deferred, see Decided.
 > **Last updated:** 2026-09-27
 
 ---
