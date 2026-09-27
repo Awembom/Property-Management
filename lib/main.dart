@@ -3,6 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/core/theme/app_theme.dart';
+import 'package:rental_app/features/auth/data/auth_repository.dart';
+import 'package:rental_app/features/auth/providers/auth_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -43,6 +45,21 @@ class RentalApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // "Contact first, link later": each time a session starts (app opened
+    // while logged in, or a fresh login), link any tenant contacts that
+    // match this user's confirmed email. Runs in the background; a failure
+    // here is harmless and simply retried next time.
+    ref.listen(authStateProvider, (previous, next) {
+      final authState = next.value;
+      final sessionStarted = authState?.event == AuthChangeEvent.initialSession ||
+          authState?.event == AuthChangeEvent.signedIn;
+      if (sessionStarted && authState?.session != null) {
+        ref.read(authRepositoryProvider).linkTenantRecords().catchError(
+              (Object e) => debugPrint('linkTenantRecords failed: $e'),
+            );
+      }
+    });
+
     return MaterialApp.router(
       title: 'Rental App',
       debugShowCheckedModeBanner: false,

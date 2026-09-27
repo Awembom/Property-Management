@@ -77,12 +77,21 @@ Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52
 
 ## Phase 2: Login and signup
 
-- [ ] Email/password signup and login
-- [ ] Profile screen (name, phone)
-- [ ] Router sends logged-out users to login and logged-in users to home
-- [ ] Logout
+- [x] Email/password signup (name, email, password)
+- [x] Email confirmation with a 6-digit code typed into the app (no deep links needed)
+- [x] Resend code; logging in with an unconfirmed email sends a new code automatically
+- [x] Email/password login with friendly error messages
+- [x] Router sends logged-out users to login and logged-in users into the app
+- [x] Session remembered after restart (Supabase stores it on the phone)
+- [x] Profile screen (name, phone) + Log out
+- [x] Tenant contacts linked to the account whenever a session starts (`link_my_tenant_records`)
+- [x] Tests: 13 passing (form checks, login/signup/verify screens with a fake Supabase)
+- [ ] **(You)** Change the "Confirm signup" email template in Supabase to show the code
+- [ ] **(You)** Test on the phone: sign up -> get code by email -> confirm -> close and reopen app (still logged in) -> edit profile -> log out -> log in
 
 **Done when:** you can sign up, log out, log back in, and the app remembers the session after a restart.
+
+> **Before real users (by Phase 12 at the latest):** Supabase's built-in email service is only for testing. It sends a few emails per hour, and only to your Supabase team members' addresses. Set up a custom SMTP provider (e.g. Resend, Brevo) under Authentication -> Emails -> SMTP Settings.
 
 ---
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:rental_app/core/router/app_router.dart';
 
 class PropertiesPage extends StatelessWidget {
   const PropertiesPage({super.key});
@@ -12,7 +14,16 @@ class PropertiesPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Properties')),
+      appBar: AppBar(
+        title: const Text('Properties'),
+        actions: [
+          IconButton(
+            tooltip: 'My profile',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => context.push(AppRoutes.profile),
+          ),
+        ],
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: properties.length,
