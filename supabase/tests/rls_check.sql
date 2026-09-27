@@ -190,14 +190,21 @@ reset role;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
 set local role authenticated;
 
-select pg_temp.ok('tenant (email unconfirmed): nothing linked', public.link_my_tenant_records() = 0);
+-- Tenant linking is PAUSED while email confirmation is off (migration
+-- 20260927130000_pause_tenant_linking.sql): the app may not call it.
+-- When linking is switched back on, change this check to expect success.
+select pg_temp.fails('tenant: linking paused (app cannot call link_my_tenant_records)',
+  'select public.link_my_tenant_records()');
 select pg_temp.ok('tenant (unlinked): sees no tenancy', (select count(*) from public.tenancies) = 0);
 
+-- The linking LOGIC is still tested, run as admin on the tenant's behalf
+-- (auth.uid() is still the tenant here).
 reset role;
+select pg_temp.ok('link logic: unconfirmed email links nothing', public.link_my_tenant_records() = 0);
 update auth.users set email_confirmed_at = now() where id = '00000000-0000-0000-0000-000000000005';
+select pg_temp.ok('link logic: confirmed email links the contact', public.link_my_tenant_records() = 1);
 set local role authenticated;
 
-select pg_temp.ok('tenant (email confirmed): contact linked', public.link_my_tenant_records() = 1);
 select pg_temp.ok('tenant: sees own tenancy incl. rent', (select rent_amount from public.tenancies) = 50000);
 select pg_temp.ok('tenant: sees own payments',  (select count(*) from public.payments) = 3);
 select pg_temp.ok('tenant: sees own receipts',  (select count(*) from public.receipts) = 3);

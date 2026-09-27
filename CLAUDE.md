@@ -105,3 +105,5 @@ Each feature folder holds its own screens, widgets, providers/controllers, and m
 ## Reference Docs
 
 Full SRS and feature summary (roles, all functional requirements, data model, roadmap) is maintained separately — check the project's docs folder or the linked artifact for the authoritative spec. This file is a working-context summary for AI assistance, not the full spec.
+
+

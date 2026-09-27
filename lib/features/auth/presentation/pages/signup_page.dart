@@ -93,7 +93,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Email',
-                          helperText: 'We\'ll send a code to confirm it.',
                           border: OutlineInputBorder(),
                         ),
                       ),

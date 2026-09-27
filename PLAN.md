@@ -23,6 +23,7 @@ _(none right now)_
 ### Decided
 
 - **Every property always has an owner** (2026-09-27): the landlord who created it. CLAUDE.md rule 6 stands: the last owner can't be removed or demoted. Apartments can be vacant; the owner assigns tenants to apartments.
+- **Email confirmation paused** (2026-09-27): emails from Supabase weren't arriving (Brevo sending "from" a Gmail address). Accounts are created without confirmation for now. **Tenant linking is disabled in the database** while confirmation is off (migration `20260927130000_pause_tenant_linking.sql`), because without it anyone could sign up with a tenant's email and see their payments. See "Turn email confirmation back on" below.
 - **Tenants: contact first, link later** (2026-09-27): staff add a tenant as a contact (name, phone, email) and can record rent right away. When the tenant signs up and confirms that email, the app links their account to the contact. Tenants who never install the app still work.
 
 ---
@@ -86,8 +87,16 @@ Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52
 - [x] Profile screen (name, phone) + Log out
 - [x] Tenant contacts linked to the account whenever a session starts (`link_my_tenant_records`)
 - [x] Tests: 13 passing (form checks, login/signup/verify screens with a fake Supabase)
-- [ ] **(You)** Change the "Confirm signup" email template in Supabase to show the code
-- [ ] **(You)** Test on the phone: sign up -> get code by email -> confirm -> close and reopen app (still logged in) -> edit profile -> log out -> log in
+- [x] "Confirm signup" email template changed to show the code
+- [ ] **(You)** Switch off "Confirm email" in Supabase and apply the pause-linking migration
+- [ ] **(You)** Test on the phone: sign up (goes straight in) -> close and reopen app (still logged in) -> edit profile -> log out -> log in
+
+### Turn email confirmation back on (before tenants use the app)
+- [ ] Working email sending: Gmail SMTP with an App Password (quick), or a custom domain + Brevo/Resend (best)
+- [ ] Supabase: switch "Confirm email" back on
+- [ ] New migration: `grant execute on function public.link_my_tenant_records() to authenticated;`
+- [ ] In `rls_check.sql`, change the "linking paused" check back to expect linking to work
+- [ ] Test: sign up -> 6-digit code arrives -> confirm -> tenant contact gets linked
 
 **Done when:** you can sign up, log out, log back in, and the app remembers the session after a restart.
 
