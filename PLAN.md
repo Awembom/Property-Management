@@ -9,7 +9,7 @@ See [CLAUDE.md](CLAUDE.md) for the domain model, roles and business rules this p
 
 ## Where we are
 
-> **Current phase:** Phase 2: Login and signup (Phase 1 complete ✅; Phase 0 still needs: run the app on your phone)
+> **Current phase:** Phase 2: Login and signup (Phases 0 and 1 complete ✅)
 > **Last updated:** 2026-09-27
 
 ---
@@ -36,12 +36,12 @@ _(none right now)_
 - [x] Scaffold files exist: router, theme, app shell, login page, properties page
 - [x] Add `.env` to `.gitignore`; add `.env.example` with placeholder keys
 - [x] `git init` and first commit (`.env` confirmed **not** included)
-- [ ] **(You)** Install the Supabase CLI, then `supabase init` + `supabase link` (creates `supabase/migrations/`)
+- [x] `supabase/migrations/` created (migrations applied via the SQL editor; the Supabase CLI is optional, use it via `npx supabase`)
 - [x] Replace the counter demo in `main.dart`: load `.env`, start Supabase, wrap in `ProviderScope`, use the router and theme
 - [x] Switch the router to `go_router`
 - [x] Add Android `INTERNET` permission (needed for release builds)
 - [x] Register `.env` as an asset in `pubspec.yaml`
-- [ ] **(You)** Check the Supabase keys in `.env` are correct, then run the app on your phone
+- [x] Supabase keys verified; app runs on a real Android phone (2026-09-27)
 
 **Done when:** the app runs on your phone, connects to Supabase, and shows the login page from the router.
 
