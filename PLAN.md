@@ -9,7 +9,7 @@ See [CLAUDE.md](CLAUDE.md) for the domain model, roles and business rules this p
 
 ## Where we are
 
-> **Current phase:** Phase 0: Setup
+> **Current phase:** Phase 1: apply the migration to Supabase (Phase 0 still needs: run the app on your phone)
 > **Last updated:** 2026-09-27
 
 ---
@@ -18,14 +18,12 @@ See [CLAUDE.md](CLAUDE.md) for the domain model, roles and business rules this p
 
 Answer these before the phase that needs them. Record the answer here and move it to *Decided* below.
 
-- [ ] **What does "no owner" mean?** (needed by Phase 1)
-  - A: An apartment can have no tenant (vacant). This is already supported, so nothing changes.
-  - B: A property can exist without an `owner` account (e.g. a manager runs it for an owner who never signs up). Then rule 6 in CLAUDE.md becomes "a property must always keep at least one **owner or manager**."
-- [ ] **How do tenants get accounts?** (needed by Phase 5)
-  - Email invite / join code / landlord adds the tenant as a contact first and links an account later.
+_(none right now)_
 
 ### Decided
-_(nothing yet)_
+
+- **Every property always has an owner** (2026-09-27): the landlord who created it. CLAUDE.md rule 6 stands: the last owner can't be removed or demoted. Apartments can be vacant; the owner assigns tenants to apartments.
+- **Tenants: contact first, link later** (2026-09-27): staff add a tenant as a contact (name, phone, email) and can record rent right away. When the tenant signs up and confirms that email, the app links their account to the contact. Tenants who never install the app still work.
 
 ---
 
@@ -51,21 +49,29 @@ _(nothing yet)_
 
 ## Phase 1: Core database and security (most important)
 
-- [ ] Tables: `profiles`, `properties`, `memberships`, `apartments`, `tenancies`, `payments`, `receipts`
-- [ ] Auto-create a `profiles` row when a user signs up (trigger on `auth.users`)
-- [ ] Helper SQL functions, e.g. `has_role(property_id, roles[])` and `is_tenant_of(tenancy_id)`
-- [ ] RLS enabled and policies written for **every** table above
-- [ ] RPC `create_property`: creates the property and the creator's membership together
-- [ ] RPC `record_payment`: inserts the payment, moves `paid_until` forward and creates the receipt number, all in one transaction
-- [ ] RPC `void_payment`: adds a void record with a reason (the original row is never changed)
-- [ ] Receipt numbers sequential per property (e.g. `RCT-2026-0001`), generated in the database
-- [ ] Partial unique index: only one active tenancy per apartment
-- [ ] Money stored as `bigint` (smallest unit); dates stored in UTC
-- [ ] App users can't UPDATE or DELETE on `payments`
-- [ ] Caretaker-safe view(s) with no money columns
-- [ ] "Last owner" (or "last owner/manager") rule enforced by a trigger, per the open decision above
+Migration: [supabase/migrations/20260927120000_core_schema.sql](supabase/migrations/20260927120000_core_schema.sql)
+Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52 checks, all passing on a local Postgres imitating Supabase)
 
-**Done when:** you log in as test users for each role (owner, manager, caretaker with and without `can_record_payments`, tenant) in the SQL editor and confirm each one can see and do exactly what the permissions table in CLAUDE.md allows. Nothing more.
+- [x] Tables: `profiles`, `properties`, `memberships`, `apartments`, `tenants` (contacts), `tenancies`, `payments`, `payment_voids`, `receipts`, `receipt_counters`
+- [x] Auto-create a `profiles` row when a user signs up (trigger on `auth.users`)
+- [x] Helper SQL functions: `is_property_member`, `has_property_role`, `can_record_payments`, `is_tenant_of_tenancy`, `is_tenant_in_property`
+- [x] RLS enabled and policies written for **every** table above
+- [x] Column-level update permissions (e.g. nobody can edit `paid_until` or `tenants.user_id` directly)
+- [x] RPC `create_property`: creates the property and the creator's owner membership together
+- [x] RPC `record_payment`: inserts the payment, moves `paid_until` forward and creates the receipt number, all in one transaction
+- [x] RPC `void_payment`: adds a void record with a reason and recalculates `paid_until` (the original row is never changed)
+- [x] RPC `link_my_tenant_records`: links tenant contacts to a signed-up tenant with a confirmed email
+- [x] Receipt numbers sequential per property per year (`RCT-2026-0001`), generated in the database
+- [x] Partial unique index: only one active tenancy per apartment
+- [x] Money stored as `bigint` (smallest unit); dates stored in UTC
+- [x] App users can't UPDATE or DELETE on `payments`
+- [x] Caretaker-safe view `tenancy_overview` (no money columns, includes computed rent status)
+- [x] Last-owner rule enforced by a trigger
+- [x] Apartments/tenants with tenancy history can't be deleted on their own (deleting the whole property still can)
+- [ ] **(You)** Apply the migration to your Supabase project
+- [ ] **(You)** Run `supabase/tests/rls_check.sql` in the Supabase SQL editor and confirm every row says `passed = true`
+
+**Done when:** you log in as test users for each role (owner, manager, caretaker with and without `can_record_payments`, tenant) in the SQL editor and confirm each one can see and do exactly what the permissions table in CLAUDE.md allows. Nothing more. `rls_check.sql` does exactly this.
 
 ---
 
