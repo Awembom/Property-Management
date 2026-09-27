@@ -8,7 +8,10 @@ import 'package:rental_app/features/auth/presentation/pages/login_page.dart';
 import 'package:rental_app/features/auth/presentation/pages/profile_page.dart';
 import 'package:rental_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:rental_app/features/auth/presentation/pages/verify_email_page.dart';
+import 'package:rental_app/features/properties/presentation/pages/members_page.dart';
 import 'package:rental_app/features/properties/presentation/pages/properties_page.dart';
+import 'package:rental_app/features/properties/presentation/pages/property_detail_page.dart';
+import 'package:rental_app/features/properties/presentation/pages/property_form_page.dart';
 
 /// Route paths in one place, so screens never hardcode strings like '/login'.
 class AppRoutes {
@@ -18,7 +21,12 @@ class AppRoutes {
   static const String signup = '/signup';
   static const String verifyEmail = '/verify-email';
   static const String properties = '/properties';
+  static const String newProperty = '/properties/new';
   static const String profile = '/profile';
+
+  static String propertyDetail(String id) => '/properties/$id';
+  static String editProperty(String id) => '/properties/$id/edit';
+  static String propertyMembers(String id) => '/properties/$id/members';
 
   /// Screens anyone can see without being logged in.
   static const Set<String> loggedOutOnly = {login, signup, verifyEmail};
@@ -70,9 +78,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           email: state.uri.queryParameters['email'] ?? '',
         ),
       ),
+      // Nested routes: '/properties/new', '/properties/<id>', '/properties/<id>/edit'...
+      // Paths inside `routes:` are relative to their parent.
       GoRoute(
         path: AppRoutes.properties,
         builder: (context, state) => const PropertiesPage(),
+        routes: [
+          // Must come before ':propertyId', or "new" would be read as an id.
+          GoRoute(
+            path: 'new',
+            builder: (context, state) => const PropertyFormPage(),
+          ),
+          GoRoute(
+            path: ':propertyId',
+            builder: (context, state) =>
+                PropertyDetailPage(propertyId: state.pathParameters['propertyId']!),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) =>
+                    PropertyFormPage(propertyId: state.pathParameters['propertyId']),
+              ),
+              GoRoute(
+                path: 'members',
+                builder: (context, state) =>
+                    MembersPage(propertyId: state.pathParameters['propertyId']!),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.profile,

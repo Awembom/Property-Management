@@ -88,7 +88,7 @@ Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52
 - [x] Tenant contacts linked to the account whenever a session starts (`link_my_tenant_records`)
 - [x] Tests: 13 passing (form checks, login/signup/verify screens with a fake Supabase)
 - [x] "Confirm signup" email template changed to show the code
-- [ ] **(You)** Switch off "Confirm email" in Supabase and apply the pause-linking migration
+- [ ] **(You)** Switch off "Confirm email" in Supabase
 - [ ] **(You)** Test on the phone: sign up (goes straight in) -> close and reopen app (still logged in) -> edit profile -> log out -> log in
 
 ### Turn email confirmation back on (before tenants use the app)
@@ -106,12 +106,19 @@ Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52
 
 ## Phase 3: Properties and members
 
-- [ ] List the properties I'm a member of
-- [ ] Create a property (calls `create_property`)
-- [ ] Edit a property; delete it (owner only)
-- [ ] Invite or add members with a role
-- [ ] Caretaker `can_record_payments` setting
-- [ ] Change a member's role or remove a member (the last owner/manager is blocked)
+Migration: [supabase/migrations/20260927140000_property_members.sql](supabase/migrations/20260927140000_property_members.sql)
+
+- [x] List the properties I'm a member of, with my role (pull down to refresh)
+- [x] Create a property (calls `create_property`; creator becomes owner)
+- [x] Property page: details, my role, links to Team (and Apartments in Phase 4)
+- [x] Edit a property (owner/manager); delete it (owner only, must type the name to confirm)
+- [x] Add members by email with a role (`add_property_member`; they need an account first)
+- [x] Caretaker `can_record_payments` setting
+- [x] Change a member's role, remove a member, leave a property (the last owner is blocked by the database)
+- [x] `profiles.email` so the team list shows emails (only visible to people sharing a property)
+- [x] Security check: 63 checks passing locally; app tests: 28 passing
+- [ ] **(You)** Run the two new migrations in the Supabase SQL editor (pause-linking + property members), then `rls_check.sql`
+- [ ] **(You)** Test on the phone with two accounts: create a property, add the second account as a caretaker, log in as them and check they can't edit or delete
 
 **Done when:** two test accounts share a property with different roles, and each one sees the right actions.
 

@@ -62,10 +62,13 @@ insert into auth.users (id, email, email_confirmed_at) values
   ('00000000-0000-0000-0000-000000000003', 'caretaker@test.local',  now()),
   ('00000000-0000-0000-0000-000000000004', 'caretaker2@test.local', now()),
   ('00000000-0000-0000-0000-000000000005', 'tenant@test.local',     null),  -- not confirmed yet
-  ('00000000-0000-0000-0000-000000000006', 'stranger@test.local',   now());
+  ('00000000-0000-0000-0000-000000000006', 'stranger@test.local',   now()),
+  ('00000000-0000-0000-0000-000000000007', 'Extra@Test.local',      now());
 
 select pg_temp.ok('profiles auto-created on sign-up',
-  (select count(*) from public.profiles where id::text like '00000000-0000-0000-0000-00000000000%') = 6);
+  (select count(*) from public.profiles where id::text like '00000000-0000-0000-0000-00000000000%') = 7);
+select pg_temp.ok('profile email copied (lower-case)',
+  (select email from public.profiles where id = '00000000-0000-0000-0000-000000000007') = 'extra@test.local');
 
 -- ======================= OWNER ================================================
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
@@ -88,6 +91,23 @@ from pg_temp.ids, (values
   ('00000000-0000-0000-0000-000000000004'::uuid, 'caretaker', true)
 ) as u(id, role, pay);
 select pg_temp.ok('owner: can add members', (select count(*) from public.memberships) = 4);
+
+-- add_property_member (the app's "Add member" button)
+create temp table m7 as select * from public.add_property_member(
+  (select property_id from pg_temp.ids), '  EXTRA@test.local ', 'manager', true);
+select pg_temp.ok('owner: add member by email (any case/spaces)',
+  (select role from m7) = 'manager');
+select pg_temp.ok('payment toggle ignored for non-caretakers',
+  (select can_record_payments from m7) = false);
+select pg_temp.fails('owner: adding an unknown email fails',
+  format('select public.add_property_member(%L, ''nobody@test.local'', ''caretaker'')', (select property_id from pg_temp.ids)));
+select pg_temp.fails('owner: adding an existing member fails',
+  format('select public.add_property_member(%L, ''extra@test.local'', ''caretaker'')', (select property_id from pg_temp.ids)));
+select pg_temp.ok('owner: sees members'' emails',
+  (select count(*) from public.memberships m join public.profiles p on p.id = m.user_id
+   where p.email is not null) = 5);
+select pg_temp.ok('owner: can remove a member',
+  pg_temp.affected('delete from public.memberships where user_id = ''00000000-0000-0000-0000-000000000007''') = 1);
 
 select pg_temp.fails('owner: cannot remove the last owner',
   'delete from public.memberships where user_id = auth.uid()');
@@ -130,6 +150,10 @@ select pg_temp.ok('manager: cannot delete the property',
   pg_temp.affected('delete from public.properties') = 0);
 select pg_temp.ok('manager: cannot manage members',
   pg_temp.affected('delete from public.memberships where role = ''caretaker''') = 0);
+select pg_temp.fails('manager: cannot add members',
+  format('select public.add_property_member(%L, ''extra@test.local'', ''caretaker'')', (select property_id from pg_temp.ids)));
+select pg_temp.ok('manager: sees co-members'' profiles',
+  (select count(*) from public.profiles) = 4);
 
 -- Payments. Month-end check: Jan 31 + 1 month = Feb 28, + 2 months = Mar 31.
 create temp table p1 as select * from public.record_payment(
@@ -224,6 +248,8 @@ select pg_temp.ok('stranger: sees nothing',
   (select count(*) from public.properties) + (select count(*) from public.apartments)
   + (select count(*) from public.tenants) + (select count(*) from public.tenancy_overview)
   + (select count(*) from public.memberships) = 0);
+select pg_temp.ok('stranger: sees only own profile (no other emails)',
+  (select count(*) from public.profiles) = 1);
 
 -- ======================= VOID (manager) =======================================
 reset role;
@@ -262,6 +288,7 @@ select pg_temp.ok('property delete removed everything under it',
 delete from auth.users where id in (
   '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
   '00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004',
-  '00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000006');
+  '00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000006',
+  '00000000-0000-0000-0000-000000000007');
 
 select n, passed, test, detail from results order by n;
