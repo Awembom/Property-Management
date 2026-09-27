@@ -9,7 +9,7 @@ See [CLAUDE.md](CLAUDE.md) for the domain model, roles and business rules this p
 
 ## Where we are
 
-> **Current phase:** Phase 1: apply the migration to Supabase (Phase 0 still needs: run the app on your phone)
+> **Current phase:** Phase 2: Login and signup (Phase 1 complete ✅; Phase 0 still needs: run the app on your phone)
 > **Last updated:** 2026-09-27
 
 ---
@@ -68,8 +68,8 @@ Security check: [supabase/tests/rls_check.sql](supabase/tests/rls_check.sql) (52
 - [x] Caretaker-safe view `tenancy_overview` (no money columns, includes computed rent status)
 - [x] Last-owner rule enforced by a trigger
 - [x] Apartments/tenants with tenancy history can't be deleted on their own (deleting the whole property still can)
-- [ ] **(You)** Apply the migration to your Supabase project
-- [ ] **(You)** Run `supabase/tests/rls_check.sql` in the Supabase SQL editor and confirm every row says `passed = true`
+- [x] Migration applied to the Supabase project (2026-09-27)
+- [x] `rls_check.sql` run in the Supabase SQL editor: all 52 checks passed ✅
 
 **Done when:** you log in as test users for each role (owner, manager, caretaker with and without `can_record_payments`, tenant) in the SQL editor and confirm each one can see and do exactly what the permissions table in CLAUDE.md allows. Nothing more. `rls_check.sql` does exactly this.
 
