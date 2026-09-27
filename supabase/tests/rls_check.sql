@@ -4,17 +4,22 @@
 -- Pretends to be each kind of user (owner, manager, caretakers, tenant,
 -- stranger) and checks they can see and do exactly what CLAUDE.md allows.
 --
--- How to run: paste the whole file into the Supabase SQL editor and click Run.
--- Everything happens inside a transaction that is ROLLED BACK at the end, so
--- no test users or data are left behind. The result is a table of checks;
--- every row should say passed = true.
+-- How to run: Supabase dashboard -> SQL Editor -> New query -> paste this
+-- whole file -> Run. The output is a table of checks; every row should say
+-- passed = true.
+--
+-- Cleanup: the editor runs the whole script as ONE transaction. The test
+-- property is deleted by the last test and the test users are deleted just
+-- before the results are shown. If anything errors part-way, Postgres undoes
+-- the entire script, so no test data is ever left behind either way.
+-- (There's no explicit begin/rollback because the editor only displays the
+-- output of the LAST statement, which must be the results table.)
 --
 -- How "pretending" works: `set local role authenticated` makes Postgres apply
 -- RLS exactly like it does for app requests, and setting
 -- request.jwt.claim.sub decides what auth.uid() returns.
 -- =============================================================================
 
-begin;
 
 -- ---------- test helpers (temporary, vanish at the end) ----------------------
 
@@ -245,7 +250,11 @@ select pg_temp.ok('property delete removed everything under it',
   + (select count(*) from public.tenancies   where property_id = (select property_id from pg_temp.ids))
   + (select count(*) from public.memberships where property_id = (select property_id from pg_temp.ids)) = 0);
 
--- ---------- results ----------------------------------------------------------
-select n, passed, test, detail from results order by n;
+-- ---------- cleanup + results ------------------------------------------------
+-- Deleting the test users also removes their profiles (cascade).
+delete from auth.users where id in (
+  '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004',
+  '00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000006');
 
-rollback;
+select n, passed, test, detail from results order by n;
