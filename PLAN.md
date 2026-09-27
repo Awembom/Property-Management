@@ -36,11 +36,14 @@ _(nothing yet)_
 - [x] Core packages added: `supabase_flutter`, `flutter_riverpod`, `go_router`, `intl`, `flutter_dotenv`
 - [x] `.env` file created
 - [x] Scaffold files exist: router, theme, app shell, login page, properties page
-- [ ] **Add `.env` to `.gitignore`** (currently missing!)
-- [ ] `git init` and first commit (check `.env` is **not** included)
-- [ ] Install the Supabase CLI and create a `supabase/migrations/` folder, so schema changes live in the repo
-- [ ] Replace the counter demo in `main.dart`: load `.env`, start Supabase, wrap in `ProviderScope`, use the router and theme
-- [ ] Register `.env` as an asset in `pubspec.yaml`
+- [x] Add `.env` to `.gitignore`; add `.env.example` with placeholder keys
+- [x] `git init` and first commit (`.env` confirmed **not** included)
+- [ ] **(You)** Install the Supabase CLI, then `supabase init` + `supabase link` (creates `supabase/migrations/`)
+- [x] Replace the counter demo in `main.dart`: load `.env`, start Supabase, wrap in `ProviderScope`, use the router and theme
+- [x] Switch the router to `go_router`
+- [x] Add Android `INTERNET` permission (needed for release builds)
+- [x] Register `.env` as an asset in `pubspec.yaml`
+- [ ] **(You)** Check the Supabase keys in `.env` are correct, then run the app on your phone
 
 **Done when:** the app runs on your phone, connects to Supabase, and shows the login page from the router.
 
