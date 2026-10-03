@@ -11,6 +11,7 @@ import 'package:rental_app/features/auth/data/profile_repository.dart';
 import 'package:rental_app/features/auth/providers/auth_providers.dart';
 import 'package:rental_app/features/bills/data/bills_repository.dart';
 import 'package:rental_app/features/dashboard/data/dashboard_repository.dart';
+import 'package:rental_app/features/notifications/data/notifications_repository.dart';
 import 'package:rental_app/features/payments/data/payments_repository.dart';
 import 'package:rental_app/features/properties/data/properties_repository.dart';
 import 'package:rental_app/features/repairs/data/repairs_repository.dart';
@@ -85,6 +86,7 @@ Future<void> downloadForOffline(Ref ref) async {
   }
 
   await step('profile', () => ref.read(profileRepositoryProvider).fetchMyProfile());
+  await step('notifications', () => ref.read(notificationsRepositoryProvider).fetchMine());
 
   // ---- staff: my properties and everything in them ----
   final properties = ref.read(propertiesRepositoryProvider);

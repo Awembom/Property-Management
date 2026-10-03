@@ -25,6 +25,7 @@ import 'package:rental_app/shared/widgets/app_card.dart';
 import 'package:rental_app/shared/widgets/confirm_dialog.dart';
 import 'package:rental_app/shared/utils/phone.dart';
 import 'package:rental_app/features/bills/data/bill.dart';
+import 'package:rental_app/features/notifications/data/notifications_repository.dart';
 import 'package:rental_app/features/bills/presentation/widgets/bill_part_menu.dart';
 import 'package:rental_app/features/bills/providers/bills_providers.dart';
 import 'package:rental_app/features/repairs/data/repair.dart';
@@ -149,6 +150,8 @@ class ApartmentDetailPage extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               _QuickActions(propertyId: propertyId, apartmentId: apartmentId, tenancy: active),
+              const SizedBox(height: 4),
+              _RentReminders(propertyId: propertyId, apartmentId: apartmentId, tenancy: active),
             ] else
               _VacantCard(
                 canStartTenancy: access?.canManageTenancies ?? false,
@@ -236,15 +239,11 @@ class _QuickActions extends ConsumerWidget {
     final phone = details?.tenant.phone;
     final late = tenancy.rentStatus == RentStatus.overdue || tenancy.rentStatus == RentStatus.dueSoon;
     final actions = [
-      // Late rent: "Remind" (a ready-written message) instead of a blank one.
+      // Late rent: "Remind" sends a rent reminder notification now.
       if (late)
         (Icons.notifications_active_rounded, 'Remind', AppColors.overdue,
-            () => context.push(AppRoutes.messageTenant(
-                  propertyId,
-                  tenancy.tenantId,
-                  title: 'Rent reminder',
-                  body: rentReminderText(tenancy, details?.money, ref.read(myPropertyProvider(propertyId)).value?.property.currency),
-                )))
+            () => sendRentReminderNow(context, ref, tenancy, details?.money,
+                ref.read(myPropertyProvider(propertyId)).value?.property.currency))
       else
         (Icons.chat_rounded, 'Message', AppColors.accent,
             () => context.push(AppRoutes.messageTenant(propertyId, tenancy.tenantId))),
@@ -284,18 +283,137 @@ class _QuickActions extends ConsumerWidget {
   }
 }
 
-/// A friendly ready-made reminder, e.g. "Hello Tina, a friendly reminder that
-/// your rent of XAF 150,000 for apartment A1 was due on 1 Sep 2026...". The
-/// amount is left out if I may not see money.
-String rentReminderText(TenancyOverview tenancy, TenancyMoney? money, String? currency) {
+/// Asks, then sends the unit's tenant a rent reminder notification now.
+Future<void> sendRentReminderNow(
+  BuildContext context,
+  WidgetRef ref,
+  TenancyOverview tenancy,
+  TenancyMoney? money,
+  String? currency,
+) async {
   final name = tenancy.tenantName.split(' ').first;
+  if (!tenancy.tenantHasAccount) {
+    showError(context, StateError('$name hasn\'t joined the app yet, so they can\'t get notifications. '
+        'Give them their invite code, or call or message them.'));
+    return;
+  }
+  final ok = await showConfirmDialog(
+    context,
+    title: 'Send $name a rent reminder?',
+    message: 'They get a notification on their phone:\n\n"${rentReminderText(tenancy, money, currency)}"',
+    confirmLabel: 'Send',
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await ref.read(notificationsRepositoryProvider).sendRentReminder(tenancy.id);
+    if (context.mounted) showMessage(context, 'Reminder sent to $name');
+  } catch (e) {
+    if (context.mounted) showError(context, e);
+  }
+}
+
+/// Automatic rent reminders for this unit: on, or paused for a while; plus
+/// "send one now".
+class _RentReminders extends ConsumerWidget {
+  const _RentReminders({required this.propertyId, required this.apartmentId, required this.tenancy});
+
+  final String propertyId;
+  final String apartmentId;
+  final TenancyOverview tenancy;
+
+  Future<void> _pause(BuildContext context, WidgetRef ref, int days) async {
+    try {
+      final until = await ref.read(notificationsRepositoryProvider).setRemindersPaused(tenancy.id, days);
+      ref.invalidate(apartmentTenanciesProvider(apartmentId));
+      ref.invalidate(apartmentsProvider(propertyId));
+      if (context.mounted) {
+        showMessage(context, until == null ? 'Rent reminders are on again' : 'Paused until ${formatDate(until)}');
+      }
+    } catch (e) {
+      if (context.mounted) showError(context, e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final paused = tenancy.remindersPaused;
+    final (title, subtitle, color) = !tenancy.tenantHasAccount
+        ? (
+            'No rent reminders yet',
+            '${tenancy.tenantName.split(' ').first} hasn\'t joined the app, so notifications can\'t reach them.',
+            AppColors.ended,
+          )
+        : paused
+            ? ('Rent reminders paused', 'Until ${formatDate(tenancy.remindersPausedUntil!)}.', AppColors.dueSoon)
+            : (
+                'Rent reminders on',
+                '1 month and 5 days before, on the due date, then every 3 days.',
+                AppColors.paid,
+              );
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+      child: Row(
+        children: [
+          IconBubble(
+            icon: paused ? Icons.notifications_paused_rounded : Icons.notifications_active_rounded,
+            color: color,
+            size: 40,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: text.titleSmall),
+                Text(subtitle, style: text.bodySmall),
+              ],
+            ),
+          ),
+          if (tenancy.tenantHasAccount)
+            PopupMenuButton<int>(
+              tooltip: 'Rent reminders',
+              onSelected: (choice) {
+                if (choice < 0) {
+                  final my = ref.read(myPropertyProvider(propertyId)).value;
+                  final money = ref
+                      .read(tenancyDetailsProvider((propertyId: propertyId, tenancyId: tenancy.id)))
+                      .value
+                      ?.money;
+                  sendRentReminderNow(context, ref, tenancy, money, my?.property.currency);
+                } else {
+                  _pause(context, ref, choice);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: -1, child: Text('Send a reminder now')),
+                const PopupMenuItem(value: 7, child: Text('Pause for a week')),
+                const PopupMenuItem(value: 30, child: Text('Pause for a month')),
+                if (paused) const PopupMenuItem(value: 0, child: Text('Turn back on')),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The words of a rent reminder sent now, the same as the tenant receives
+/// (rent_reminder_text in the database, 'manual'). The amount is left out
+/// of the preview for staff who may not see money.
+String rentReminderText(TenancyOverview tenancy, TenancyMoney? money, String? currency) {
   final amount = money == null || currency == null
-      ? ''
-      : ' of ${formatMoney(money.monthlyRent * tenancy.paymentIntervalMonths, currency)}';
+      ? null
+      : formatMoney(money.monthlyRent * tenancy.paymentIntervalMonths, currency);
+  final days = -daysUntil(tenancy.paidUntil); // > 0: overdue by that many days
+  final unit = tenancy.apartmentName;
   final due = formatDate(tenancy.paidUntil);
-  final when = daysUntil(tenancy.paidUntil) < 0 ? 'was due on $due' : 'is due on $due';
-  return 'Hello $name, a friendly reminder that your rent$amount for apartment '
-      '${tenancy.apartmentName} $when. Please pay as soon as you can. Thank you!';
+  if (days > 0) {
+    return 'Your rent for apartment $unit was due on $due ($days day${days == 1 ? '' : 's'} ago). '
+        'Please pay ${amount ?? 'it'} as soon as you can.';
+  }
+  if (days == 0) return 'Your rent for apartment $unit is due today${amount == null ? '' : ': $amount'}.';
+  return 'Your rent for apartment $unit is due on $due${amount == null ? '' : ': $amount'}.';
 }
 
 /// Shows the first [initial] items, with "Show all (n)" for the rest, so the

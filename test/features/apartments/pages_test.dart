@@ -226,7 +226,8 @@ void main() {
 
   test('a rent reminder says how much and since when', () {
     final text = rentReminderText(fakeTenancy(), const TenancyMoney(monthlyRent: 50000), 'XAF');
-    expect(text, startsWith('Hello Tina, a friendly reminder that your rent of XAF 150,000 for apartment A1 was due on 1 Sep 2026'));
-    expect(rentReminderText(fakeTenancy(), null, null), contains('your rent for apartment A1'));
+    expect(text, startsWith('Your rent for apartment A1 was due on 1 Sep 2026 ('));
+    expect(text, endsWith('Please pay XAF 150,000 as soon as you can.'));
+    expect(rentReminderText(fakeTenancy(), null, null), endsWith('Please pay it as soon as you can.'));
   });
 }

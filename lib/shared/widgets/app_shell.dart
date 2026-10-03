@@ -30,7 +30,13 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountType = ref.watch(myProfileProvider).value?.accountType;
+    final profile = ref.watch(myProfileProvider);
+    // Right after login the account type isn't known yet: no bar for that
+    // moment, rather than the wrong one (a tenant briefly seeing Properties).
+    if (profile.isLoading && !profile.hasValue) {
+      return Scaffold(body: navigationShell);
+    }
+    final accountType = profile.value?.accountType;
     final managesSomething = (ref.watch(myPropertiesProvider).value ?? const []).isNotEmpty;
     final staffTabs = accountType != AccountType.tenant || managesSomething;
 

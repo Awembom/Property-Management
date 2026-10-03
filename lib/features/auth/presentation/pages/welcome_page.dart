@@ -35,17 +35,14 @@ class WelcomePage extends StatelessWidget {
                       top: 20,
                       child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.home_work_rounded, color: Colors.white),
+                          // The app icon (assets/branding).
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset('assets/branding/icon.png', width: 40, height: 40),
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            'Rental App',
+                            'Homedly',
                             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],

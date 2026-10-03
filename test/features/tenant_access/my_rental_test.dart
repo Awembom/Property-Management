@@ -188,7 +188,7 @@ void main() {
           )),
     ]);
     expect(find.text('Call your landlord'), findsOneWidget);
-    expect(find.text('+237 677 000 111'), findsOneWidget);
+    expect(find.text('+237 677 00 01 11'), findsOneWidget); // written the Cameroon way
     expect(find.widgetWithText(FilledButton, 'Call'), findsOneWidget);
   });
 

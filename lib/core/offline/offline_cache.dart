@@ -62,6 +62,13 @@ class OfflineCache {
     return await _load(key, fetch) as T;
   }
 
+  /// One saved row under [key], without a request; null if none saved.
+  Future<Map<String, dynamic>?> savedRow(String key) async {
+    final account = _account();
+    final saved = account == null ? null : await _readSaved(account, key);
+    return saved?.$1 as Map<String, dynamic>?;
+  }
+
   /// Only what's saved under [key], without a request. Throws
   /// [OfflineException] if nothing is saved.
   Future<List<Map<String, dynamic>>> savedRows(String key) async {

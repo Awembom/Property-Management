@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rental_app/shared/utils/phone.dart';
+import 'package:rental_app/shared/widgets/phone_field.dart';
 import 'package:rental_app/core/constants/currencies.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/features/properties/data/properties_repository.dart';
@@ -60,7 +62,9 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
       TextEditingController(text: '${widget.existing?.gracePeriodDays ?? 7}');
   // The number tenants tap to call. A new property starts with my own phone.
   late final _phoneController = TextEditingController(
-    text: widget.existing == null ? ref.read(myProfileProvider).value?.phone : widget.existing!.contactPhone,
+    text: phoneLocalPart(
+      widget.existing == null ? ref.read(myProfileProvider).value?.phone : widget.existing!.contactPhone,
+    ),
   );
   late String? _currency = widget.existing?.currency;
   bool _saving = false;
@@ -84,7 +88,7 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
     final name = _nameController.text.trim();
     final address = _addressController.text.trim().isEmpty ? null : _addressController.text.trim();
     final graceDays = int.parse(_graceController.text);
-    final phone = _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim();
+    final phone = normalizePhone(_phoneController.text);
 
     try {
       if (_isEditing) {
@@ -157,15 +161,10 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
               ),
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            PhoneField(
               controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Contact phone for tenants',
-                hintText: 'Your number or a caretaker\'s',
-                helperText: 'Tenants tap it in the app to call.',
-                prefixIcon: Icon(Icons.phone_rounded),
-              ),
+              label: 'Contact phone for tenants',
+              helperText: 'Your number or a caretaker\'s. Tenants tap it in the app to call.',
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

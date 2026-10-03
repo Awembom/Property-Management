@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rental_app/core/notifications/push_service.dart';
 import 'package:rental_app/core/supabase/supabase_providers.dart';
 import 'package:rental_app/features/auth/data/account_type.dart';
 import 'package:rental_app/features/auth/data/username.dart';
@@ -10,9 +11,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// People log in with a username; see username.dart for how that maps to
 /// the email Supabase needs.
 class AuthRepository {
-  AuthRepository(this._client);
+  AuthRepository(this._client, {this.beforeSignOut});
 
   final SupabaseClient _client;
+
+  /// Runs just before logging out while still logged in (unregisters this
+  /// phone from push notifications).
+  final Future<void> Function()? beforeSignOut;
 
   GoTrueClient get _auth => _client.auth;
 
@@ -34,6 +39,7 @@ class AuthRepository {
     required String username,
     required String password,
     required String fullName,
+    required String phone,
     required AccountType accountType,
   }) async {
     final response = await _auth.signUp(
@@ -45,6 +51,7 @@ class AuthRepository {
         'full_name': fullName,
         'username': normalizeUsername(username),
         'account_type': accountType.value,
+        'phone': phone, // '+237677000111'
       },
     );
 
@@ -76,6 +83,7 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    await beforeSignOut?.call();
     await _auth.signOut();
   }
 
@@ -101,5 +109,8 @@ class AuthRepository {
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.watch(supabaseClientProvider));
+  return AuthRepository(
+    ref.watch(supabaseClientProvider),
+    beforeSignOut: () => ref.read(pushServiceProvider).unregisterThisPhone(),
+  );
 });

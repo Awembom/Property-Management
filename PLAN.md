@@ -22,6 +22,7 @@ _(none right now)_
 
 ### Decided
 
+- **Push notifications** (2026-10-03): app name Homedly, ID com.awembom.rental, Firebase project homedly-4a906, Android only for now. Rent reminders 1 month and 5 days before, on the due date, then every 3 days overdue, alternating 8:00 and 20:00 Cameroon time; staff can send one now (max every 6 h) or pause a unit's reminders (a week / a month). Bills: 2 days before and on the due date (8:00), plus when a bill is created. Also: receipts, messages, issue replies/status (tenants); new issues, replies, receipt disputes (money staff only), tenants joining (team). More than 2 at once or 4 an hour: one "You have N notifications, open Homedly" push instead. Everything is also in the bell list in the app.
 - **Unit page, repairs, agreements, contact phone** (2026-10-02): each unit shows its tenant, quick actions (message, bill, rent, call, repair), its issues, bills (mark paid or waive with a reason) and repair history. Repairs: what, when, cost (money permission only), optional issue it fixed, optional "Repairs" bill to the tenant. Owners write the tenancy agreement per property and optionally per unit (fields like {tenant} filled in); when it changes, current tenants must accept again; the text each tenant accepted is kept. Each property has a contact phone tenants tap to call.
 - **Offline use** (2026-10-02): everything a user loaded stays readable offline, with no expiry, until fresher data replaces it. While online, the main data (properties, apartments, tenancies, payments, bills, tickets, announcements; for tenants their homes, bills, tickets and receipts) is downloaded in the background, so every main screen opens offline. Saved data is encrypted per account (key in the Android Keystore); it stays after logout but only opens for the same account. Changes need a connection, except ticket messages, new tickets and receipt confirmations, which wait in an outbox and are sent automatically. A small grey "Offline" strip shows at the top; tapping it shows when the data was last updated.
 - **Receipts can't be faked** (2026-10-02): every receipt is signed by the server (Edge Function `sign-receipt`, Ed25519; the private key is only a Supabase secret) and carries a QR code. "Check a receipt" in the app scans it: it works offline, says "Genuine" or "Not genuine", and online also shows whether the payment was voided later. App users only (no public web page for now). Receipts issued before this were signed retroactively.
@@ -262,6 +263,36 @@ Migration: `20261004110000_bill_amounts_per_unit.sql` (applied 2026-10-02)
 - [x] "Remind" on late units: a ready-written rent reminder to that tenant
 - [x] Security check: 230 checks passing locally; app tests: 136 passing
 - [ ] **(You)** Check on the phone: the eye on the monthly total; Record rent from a unit tile; a per-apartment water bill; Remind a late tenant; Log the repair from an issue
+
+---
+
+## Phase 11: Push notifications (2026-10-03)
+
+Migration: `20261005100000_push_notifications.sql` (applied 2026-10-03). Edge Function `send-push` (deployed, --no-verify-jwt; secrets FCM_SERVICE_ACCOUNT, PUSH_DISPATCH_SECRET; Vault: homedly_dispatch_secret, homedly_functions_url). pg_cron jobs: homedly-send (every minute), homedly-morning (07:00 UTC), homedly-evening (19:00 UTC), homedly-cleanup (weekly, keeps 90 days).
+
+- [x] App renamed Homedly, ID com.awembom.rental, Firebase (google-services.json), "Homedly" notification channel and icon
+- [x] Phones register after login and unregister on logout; tapping a notification opens its screen; a banner when the app is open
+- [x] Bell on Home with unread count; notifications list (marked read on opening)
+- [x] Scheduled rent and bill reminders, event notifications, "too many" summary
+- [x] Unit page: Remind (send now) and Rent reminders card (pause a week / a month, turn back on)
+- [x] Security check: 252 checks passing locally; app tests: 140 passing
+- [x] Phone test: notifications arrive (2026-10-03)
+- [x] Sent immediately (pg_net from a trigger, ~0.5 s); clearer receipt and message wording (`20261005110000_push_immediate.sql`)
+- [x] Live updates: Supabase Realtime on bills, payments, receipts, tickets, tenancies, apartments, announcements, notifications; open screens reload by themselves; team notified when a tenant confirms a receipt (`20261005120000_realtime_receipt_confirmed.sql`)
+- [ ] **(You)** Two phones: mark a bill paid as landlord and watch the tenant's Bills tab change; confirm a receipt as tenant and watch the landlord's receipt
+- [ ] iOS (needs an Apple developer account)
+
+---
+
+## Sign-up phone, branding, onboarding (2026-10-03)
+
+Migration: `20261006100000_signup_phone.sql` (applied 2026-10-03)
+
+- [x] Sign-up: password typed twice; phone number required. All phone fields: +237 fixed, 9 digits (6 or 2 first), saved as +237XXXXXXXXX, shown as +237 6XX XX XX XX
+- [x] Logo: white house with a keyhole door on orange (assets/branding, drawn by a script); app icon (adaptive) and splash screen generated (flutter_launcher_icons.yaml, flutter_native_splash.yaml)
+- [x] Splash stays until the app knows who is using it; the saved profile shows the right Home page and tabs at once (no landlord screens flashing for tenants)
+- [x] Onboarding: 4 slides, Skip / Next / Get started, shown once per phone before the welcome screen
+- [ ] **(You)** Check the icon on the home screen and the splash; log out to see the onboarding once
 
 ---
 

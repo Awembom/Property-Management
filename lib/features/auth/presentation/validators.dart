@@ -34,6 +34,13 @@ String? validateNewPassword(String? value) {
   return null;
 }
 
+/// The "Confirm password" field: must be typed the same as [password].
+String? validatePasswordsMatch(String password, String? confirmation) {
+  if ((confirmation ?? '').isEmpty) return 'Type the password again';
+  if (confirmation != password) return 'The passwords don\'t match';
+  return null;
+}
+
 String? validateFullName(String? value) {
   if ((value?.trim() ?? '').isEmpty) return 'Enter your name';
   return null;

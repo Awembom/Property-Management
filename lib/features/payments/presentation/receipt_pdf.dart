@@ -251,7 +251,7 @@ pw.Widget _receiptPage(ReceiptInfo info, {String? note, String? footer}) {
               pw.SizedBox(width: 10),
               pw.Expanded(
                 child: pw.Text(
-                  'Proof this receipt is genuine: scan this code with the Rental App '
+                  'Proof this receipt is genuine: scan this code with the Homedly app '
                   '(Profile > Check a receipt). Any change to this receipt makes the check fail.',
                   style: const pw.TextStyle(color: PdfColors.grey700, fontSize: 8),
                 ),

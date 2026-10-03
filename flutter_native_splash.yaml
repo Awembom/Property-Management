@@ -1,0 +1,10 @@
+# The splash screen while Homedly starts: the white house on orange.
+# Regenerate after changing it:  dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#E8743B"
+  image: assets/branding/splash_logo.png
+  android_12:
+    color: "#E8743B"
+    image: assets/branding/splash_logo.png
+  ios: false
+  web: false

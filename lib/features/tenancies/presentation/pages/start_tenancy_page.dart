@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rental_app/shared/utils/phone.dart';
+import 'package:rental_app/shared/widgets/phone_field.dart';
 import 'package:rental_app/core/constants/currencies.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/core/theme/app_colors.dart';
@@ -180,7 +182,7 @@ class _StartTenancyFormState extends ConsumerState<_StartTenancyForm> {
                   : _nameController.text.trim(),
               tenantPhone: _useExistingTenant
                   ? null
-                  : trimToNull(_phoneController.text),
+                  : normalizePhone(_phoneController.text),
               tenantEmail: _useExistingTenant
                   ? null
                   : trimToNull(_emailController.text),
@@ -264,7 +266,7 @@ class _StartTenancyFormState extends ConsumerState<_StartTenancyForm> {
                       child: Text(
                         [
                           tenant.fullName,
-                          if (tenant.phone != null) tenant.phone!,
+                          if (tenant.phone != null) formatPhone(tenant.phone!),
                         ].join(' · '),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -292,14 +294,7 @@ class _StartTenancyFormState extends ConsumerState<_StartTenancyForm> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone (optional)',
-                  prefixIcon: Icon(Icons.phone_rounded),
-                ),
-              ),
+              PhoneField(controller: _phoneController),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,

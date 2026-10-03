@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rental_app/shared/utils/phone.dart';
+import 'package:rental_app/shared/widgets/phone_field.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/core/theme/app_colors.dart';
 import 'package:rental_app/features/admin/providers/admin_providers.dart';
@@ -71,7 +73,8 @@ class _ProfileBody extends ConsumerStatefulWidget {
 
 class _ProfileBodyState extends ConsumerState<_ProfileBody> {
   late final _nameController = TextEditingController(text: widget.profile.fullName);
-  late final _phoneController = TextEditingController(text: widget.profile.phone);
+  late final _phoneController = TextEditingController(text: phoneLocalPart(widget.profile.phone));
+  final _formKey = GlobalKey<FormState>();
   bool _saving = false;
 
   @override
@@ -82,11 +85,12 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
   }
 
   Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
       final sent = await ref.read(myProfileProvider.notifier).save(
             fullName: _nameController.text,
-            phone: _phoneController.text,
+            phone: normalizePhone(_phoneController.text) ?? '',
           );
       if (mounted) {
         showMessage(
@@ -160,14 +164,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-              ),
+              Form(key: _formKey, child: PhoneField(controller: _phoneController)),
               const SizedBox(height: 14),
               FilledButton(
                 onPressed: _saving ? null : _save,

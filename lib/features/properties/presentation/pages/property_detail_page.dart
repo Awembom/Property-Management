@@ -17,6 +17,7 @@ import 'package:rental_app/features/tickets/data/ticket.dart';
 import 'package:rental_app/features/tickets/providers/tickets_providers.dart';
 import 'package:rental_app/shared/utils/dates.dart';
 import 'package:rental_app/shared/utils/money.dart';
+import 'package:rental_app/shared/utils/phone.dart';
 import 'package:rental_app/shared/widgets/app_card.dart';
 import 'package:rental_app/shared/widgets/async_error_view.dart';
 import 'package:rental_app/shared/widgets/confirm_dialog.dart';
@@ -206,7 +207,7 @@ class PropertyDetailPage extends ConsumerWidget {
                             Text(
                               property.contactPhone == null
                                   ? 'No contact phone for tenants'
-                                  : 'Tenants call ${property.contactPhone}',
+                                  : 'Tenants call ${formatPhone(property.contactPhone!)}',
                               style: text.bodySmall,
                             ),
                             const SizedBox(height: 6),

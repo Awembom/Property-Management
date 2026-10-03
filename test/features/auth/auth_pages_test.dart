@@ -33,9 +33,10 @@ class FakeAuthRepository extends Fake implements AuthRepository {
     required String username,
     required String password,
     required String fullName,
+    required String phone,
     required AccountType accountType,
   }) async {
-    calls.add('signUp $username $fullName ${accountType.value}');
+    calls.add('signUp $username $fullName $phone ${accountType.value}');
     if (signUpError != null) throw signUpError!;
   }
 
@@ -157,6 +158,8 @@ void main() {
       WidgetTester tester, {
       String username = 'tina',
       String password = 'secret123',
+      String? confirm,
+      String phone = '677000111',
     }) async {
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Full name'),
@@ -166,10 +169,13 @@ void main() {
         find.widgetWithText(TextFormField, 'Username'),
         username,
       );
+      await tester.enterText(find.widgetWithText(TextFormField, 'Phone'), phone);
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Password'),
         password,
       );
+      await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), confirm ?? password);
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create account'));
       await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
       await tester.pumpAndSettle();
     }
@@ -206,9 +212,22 @@ void main() {
         await pumpAuthScreen(tester, fake, AppRoutes.signup);
         await chooseTenant(tester);
         await fillSignup(tester);
-        expect(fake.calls, ['signUp tina Tina Tenant tenant']);
+        expect(fake.calls, ['signUp tina Tina Tenant +237677000111 tenant']);
       },
     );
+
+    testWidgets('the password must be typed twice the same, and the phone is required', (tester) async {
+      final fake = FakeAuthRepository();
+      await pumpAuthScreen(tester, fake, AppRoutes.signupDetailsFor(AccountType.tenant));
+      await fillSignup(tester, confirm: 'secret124', phone: '');
+      expect(find.text('The passwords don\'t match'), findsOneWidget);
+      expect(find.text('Enter your phone number'), findsOneWidget);
+      expect(fake.calls, isEmpty);
+
+      await fillSignup(tester, phone: '12345');
+      expect(find.text('Enter the 9 digits after +237'), findsOneWidget);
+      expect(fake.calls, isEmpty);
+    });
 
     testWidgets('"Change" goes back to choosing the type', (tester) async {
       final fake = FakeAuthRepository();

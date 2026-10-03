@@ -37,6 +37,13 @@ class ProfileRepository {
   /// after restarting the app) until it's sent.
   Future<void> saveLocally(Profile profile) => _cache.put('my_profile', profile.toJson());
 
+  /// The profile saved on this phone (from the last time it loaded), or
+  /// null. Instant: lets the app show the right Home page straight away.
+  Future<Profile?> fetchSavedProfile() async {
+    final row = await _cache.savedRow('my_profile');
+    return row == null ? null : Profile.fromJson(row);
+  }
+
   Future<void> updateMyProfile(Profile profile) async {
     await _client
         .from('profiles')

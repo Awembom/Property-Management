@@ -7,6 +7,8 @@ import 'package:rental_app/features/auth/data/account_type.dart';
 import 'package:rental_app/features/auth/data/auth_repository.dart';
 import 'package:rental_app/features/auth/presentation/pages/account_type_page.dart';
 import 'package:rental_app/features/auth/presentation/validators.dart';
+import 'package:rental_app/shared/utils/phone.dart';
+import 'package:rental_app/shared/widgets/phone_field.dart';
 import 'package:rental_app/features/auth/presentation/widgets/password_field.dart';
 import 'package:rental_app/shared/widgets/snackbars.dart';
 
@@ -27,6 +29,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  final _phoneController = TextEditingController();
   bool _loading = false;
 
   @override
@@ -34,6 +38,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     _nameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -45,6 +51,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
             username: _usernameController.text,
             password: _passwordController.text,
             fullName: _nameController.text.trim(),
+            phone: normalizePhone(_phoneController.text)!,
             accountType: widget.accountType,
           );
       // Logged in: the router moves the user into the app by itself.
@@ -125,9 +132,24 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
+                PhoneField(
+                  controller: _phoneController,
+                  required: true,
+                  helperText: 'So your landlord, tenants or team can reach you.',
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
                 PasswordField(
                   controller: _passwordController,
                   validator: validateNewPassword,
+                  isNewPassword: true,
+                ),
+                const SizedBox(height: 14),
+                // Typed twice, so a typo doesn't lock them out of a new account.
+                PasswordField(
+                  controller: _confirmController,
+                  label: 'Confirm password',
+                  validator: (value) => validatePasswordsMatch(_passwordController.text, value),
                   isNewPassword: true,
                   onSubmitted: _loading ? null : _signUp,
                 ),

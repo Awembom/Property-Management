@@ -149,7 +149,7 @@ class _ResultView extends ConsumerWidget {
           AppColors.muted,
           Icons.qr_code_2_rounded,
           'Not a receipt code',
-          'This QR code isn\'t from a Rental App receipt.',
+          'This QR code isn\'t from a Homedly receipt.',
         ),
     };
 

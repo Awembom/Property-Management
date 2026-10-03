@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "432899747783",
+    "project_id": "homedly-4a906",
+    "storage_bucket": "homedly-4a906.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:432899747783:android:c516aae5c6e5aa2fa273e2",
+        "android_client_info": {
+          "package_name": "com.awembom.rental"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZMBv-eVxqDT9irMD3cC5X_VXdqILC6xM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

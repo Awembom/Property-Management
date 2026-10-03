@@ -14,6 +14,7 @@ import 'package:rental_app/features/auth/data/profile.dart';
 import 'package:rental_app/features/auth/providers/auth_providers.dart';
 import 'package:rental_app/features/dashboard/data/dashboard.dart';
 import 'package:rental_app/features/dashboard/providers/dashboard_providers.dart';
+import 'package:rental_app/features/notifications/data/notifications_repository.dart';
 import 'package:rental_app/features/properties/presentation/widgets/property_card.dart';
 import 'package:rental_app/features/properties/providers/properties_providers.dart';
 import 'package:rental_app/features/receipts/providers/receipts_providers.dart';
@@ -40,7 +41,12 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(myProfileProvider).value;
+    final profileValue = ref.watch(myProfileProvider);
+    // Who am I? Until that's known, a short wait (not the wrong Home page).
+    if (profileValue.isLoading && !profileValue.hasValue) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final profile = profileValue.value;
     final managesSomething = (ref.watch(myPropertiesProvider).value ?? const []).isNotEmpty;
     final isTenant = profile?.accountType == AccountType.tenant && !managesSomething;
 
@@ -115,6 +121,34 @@ class _RoundButton extends StatelessWidget {
   }
 }
 
+/// The bell, with how many notifications I haven't read.
+class _BellButton extends ConsumerWidget {
+  const _BellButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNotificationsProvider);
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        shape: const CircleBorder(),
+        elevation: 1,
+        shadowColor: Colors.black26,
+        child: IconButton(
+          tooltip: 'Notifications',
+          onPressed: () => context.push(AppRoutes.notifications),
+          icon: Badge.count(
+            count: unread,
+            isLabelVisible: unread > 0,
+            child: Icon(unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------- staff
 
 class _StaffHome extends ConsumerWidget {
@@ -133,12 +167,14 @@ class _StaffHome extends ConsumerWidget {
         ref.invalidate(myProfileProvider);
         ref.invalidate(myPropertiesProvider);
         ref.invalidate(attentionItemsProvider);
+        ref.invalidate(myNotificationsProvider);
         return ref.refresh(dashboardProvider.future);
       },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
           _Greeting(profile: profile, actions: [
+            const _BellButton(),
             if (isAdmin)
               _RoundButton(
                 icon: Icons.admin_panel_settings_outlined,
@@ -354,12 +390,13 @@ class _TenantHome extends ConsumerWidget {
         ref.invalidate(myHomeBillsProvider);
         ref.invalidate(myAnnouncementsProvider);
         ref.invalidate(receiptsToCheckProvider);
+        ref.invalidate(myNotificationsProvider);
         return ref.refresh(myRentalsProvider.future);
       },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          _Greeting(profile: profile),
+          _Greeting(profile: profile, actions: const [_BellButton()]),
           ...rentals.when(
             loading: () => [
               const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator())),

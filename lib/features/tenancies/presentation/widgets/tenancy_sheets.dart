@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rental_app/shared/utils/phone.dart';
+import 'package:rental_app/shared/widgets/phone_field.dart';
 import 'package:rental_app/core/theme/app_colors.dart';
 import 'package:rental_app/features/tenancies/data/payment_interval.dart';
 import 'package:rental_app/features/tenancies/data/tenancies_repository.dart';
@@ -318,7 +320,7 @@ class _EditTenantSheet extends ConsumerStatefulWidget {
 class _EditTenantSheetState extends ConsumerState<_EditTenantSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.tenant.fullName);
-  late final _phoneController = TextEditingController(text: widget.tenant.phone);
+  late final _phoneController = TextEditingController(text: phoneLocalPart(widget.tenant.phone));
   late final _emailController = TextEditingController(text: widget.tenant.email);
   late final _idNumberController = TextEditingController(text: widget.tenant.idNumber);
   bool _busy = false;
@@ -340,7 +342,7 @@ class _EditTenantSheetState extends ConsumerState<_EditTenantSheet> {
       await repository.updateTenant(Tenant(
         id: widget.tenant.id,
         fullName: _nameController.text.trim(),
-        phone: trimToNull(_phoneController.text),
+        phone: normalizePhone(_phoneController.text),
         email: trimToNull(_emailController.text),
       ));
       // The ID number lives in its own (owners/managers only) table.
@@ -385,14 +387,7 @@ class _EditTenantSheetState extends ConsumerState<_EditTenantSheet> {
           ),
         ],
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(
-            labelText: 'Phone (optional)',
-            prefixIcon: Icon(Icons.phone_rounded),
-          ),
-        ),
+        PhoneField(controller: _phoneController),
         const SizedBox(height: 16),
         TextFormField(
           controller: _emailController,

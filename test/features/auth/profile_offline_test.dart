@@ -15,6 +15,9 @@ class FakeProfileRepository extends Fake implements ProfileRepository {
 
   @override
   Future<void> saveLocally(Profile profile) async => savedLocally = profile;
+
+  @override
+  Future<Profile?> fetchSavedProfile() async => null;
 }
 
 /// An outbox that is always "offline": everything waits.

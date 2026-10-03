@@ -50,6 +50,10 @@ dependencies:
   path: ^1.9.1
   http: ^1.6.0
   url_launcher: ^6.3.2
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  flutter_native_splash: ^2.4.8
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +65,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,6 +81,8 @@ flutter:
   # Loaded at startup by flutter_dotenv (see lib/main.dart).
   assets:
     - .env
+    # The app icon, shown on the welcome screen.
+    - assets/branding/icon.png
 
   # Poppins (Open Font License, see assets/fonts/OFL.txt), the app's font.
   fonts:

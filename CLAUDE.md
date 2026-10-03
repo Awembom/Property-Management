@@ -30,6 +30,10 @@ Username + password only, no emails (PLAN.md Phase 2b). Supabase Auth needs an e
 - Background download for offline use: `downloadForOffline` in `lib/core/offline/sync_controller.dart`. Add new main screens' loads there.
 - Receipts are signed by the `sign-receipt` Edge Function; the public key is in `lib/features/receipts/data/signed_receipt.dart`. Never put the private key in the repo.
 
+## Notifications
+
+Anything that should reach someone is a row in `notifications` (via `public.notify()` / `notify_staff()` in SQL, from triggers or `queue_scheduled_notifications()`); the `send-push` Edge Function delivers them every minute. Don't send pushes from the app. Routes in notifications are app paths (see AppRoutes). App ID `com.awembom.rental`, Firebase project `homedly-4a906`; never commit the service account key.
+
 ## Project Structure
 
 Feature-based, not type-based:

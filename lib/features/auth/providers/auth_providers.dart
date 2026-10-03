@@ -24,8 +24,23 @@ final myProfileProvider =
 
 class MyProfileNotifier extends AsyncNotifier<Profile> {
   @override
-  Future<Profile> build() {
-    return ref.read(profileRepositoryProvider).fetchMyProfile();
+  Future<Profile> build() async {
+    final repository = ref.read(profileRepositoryProvider);
+    // Known from last time: show it at once (the right Home page and tabs,
+    // no flash of the landlord's screens for a tenant), then update it.
+    final saved = await repository.fetchSavedProfile();
+    if (saved != null) {
+      Future.microtask(() async {
+        try {
+          final fresh = await repository.fetchMyProfile();
+          if (ref.mounted) state = AsyncData(fresh);
+        } catch (_) {
+          // Offline: the saved one stays.
+        }
+      });
+      return saved;
+    }
+    return repository.fetchMyProfile();
   }
 
   /// Saves my name and phone. Online: straight to the database, then

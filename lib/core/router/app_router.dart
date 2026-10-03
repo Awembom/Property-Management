@@ -29,6 +29,8 @@ import 'package:rental_app/features/dashboard/presentation/pages/home_page.dart'
 import 'package:rental_app/features/payments/presentation/pages/receipt_page.dart';
 import 'package:rental_app/features/payments/presentation/pages/tenant_receipt_page.dart';
 import 'package:rental_app/features/receipts/presentation/check_receipt_page.dart';
+import 'package:rental_app/features/notifications/presentation/notifications_page.dart';
+import 'package:rental_app/features/onboarding/onboarding.dart';
 import 'package:rental_app/features/receipts/presentation/report_receipt_problem_page.dart';
 import 'package:rental_app/features/repairs/presentation/new_repair_page.dart';
 import 'package:rental_app/features/properties/presentation/pages/agreement_editor_page.dart';
@@ -51,6 +53,7 @@ class AppRoutes {
   AppRoutes._();
 
   // Logged out
+  static const String onboarding = '/onboarding';
   static const String welcome = '/welcome';
   static const String login = '/login';
   static const String signup = '/signup'; // step 1: choose the account type
@@ -85,6 +88,7 @@ class AppRoutes {
   static const String checkReceipt = '/profile/check-receipt';
   static String ticket(String ticketId) => '/my-issues/$ticketId';
   static const String myAnnouncements = '/home/announcements';
+  static const String notifications = '/home/notifications';
   static String announcements(String propertyId) => '/properties/$propertyId/announcements';
   static String newAnnouncement(String propertyId) => '/properties/$propertyId/announcements/new';
   static String propertyTickets(String propertyId) => '/properties/$propertyId/tickets';
@@ -123,7 +127,7 @@ class AppRoutes {
       '/properties/$propertyId/receipts/$paymentId';
 
   /// Screens anyone can see without being logged in.
-  static const Set<String> loggedOutOnly = {welcome, login, signup, signupDetails};
+  static const Set<String> loggedOutOnly = {onboarding, welcome, login, signup, signupDetails};
 }
 
 /// A GoRoute whose page sits on the app's background with faint shapes
@@ -163,6 +167,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final loggedIn = auth.currentSession != null;
       final onLoggedOutScreen = AppRoutes.loggedOutOnly.contains(state.matchedLocation);
 
+      // First time on this phone: the onboarding, before anything else.
+      if (!loggedIn && !ref.read(onboardingSeenProvider) && state.matchedLocation != AppRoutes.onboarding) {
+        return AppRoutes.onboarding;
+      }
       if (!loggedIn && !onLoggedOutScreen) return AppRoutes.welcome;
 
       // Logged in with a temporary password (after an owner/manager reset
@@ -177,6 +185,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
     routes: [
       // ---------------- logged out ----------------
+      AppRoute(path: AppRoutes.onboarding, builder: (_, _) => const OnboardingPage()),
       AppRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
       AppRoute(path: AppRoutes.login, builder: (_, _) => const LoginPage()),
       AppRoute(
@@ -204,6 +213,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (_, _) => const HomePage(),
               routes: [
                 AppRoute(path: 'announcements', builder: (_, _) => const MyAnnouncementsPage()),
+                AppRoute(path: 'notifications', builder: (_, _) => const NotificationsPage()),
                 // The tenant's home: inside the Home tab, so the bar stays.
                 AppRoute(
                   path: 'my-home/:tenancyId',

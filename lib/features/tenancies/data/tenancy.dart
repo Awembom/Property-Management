@@ -24,6 +24,8 @@ class TenancyOverview {
     this.rentStatus,
     this.agreementAcceptedAt,
     this.agreementText,
+    this.remindersPausedUntil,
+    this.tenantHasAccount = false,
   });
 
   final String id;
@@ -62,6 +64,15 @@ class TenancyOverview {
   /// default). May contain placeholders like {tenant}; see agreement_text.dart.
   final String? agreementText;
 
+  /// Automatic rent reminders are paused until this day (null = on).
+  final DateTime? remindersPausedUntil;
+
+  /// The tenant joined the app (so they can get notifications).
+  final bool tenantHasAccount;
+
+  /// Reminders are paused right now.
+  bool get remindersPaused => remindersPausedUntil != null && daysUntil(remindersPausedUntil!) >= 0;
+
   /// The date rent will be paid up to after a payment of [months] months.
   ///
   /// Counted from the billing start like the database does (record_payment),
@@ -76,7 +87,8 @@ class TenancyOverview {
   static const columns =
       'id, property_id, apartment_id, apartment_name, tenant_id, '
       'tenant_name, payment_interval_months, start_date, end_date, billing_start_date, '
-      'paid_until, paid_months, status, rent_status, agreement_accepted_at, agreement_text';
+      'paid_until, paid_months, status, rent_status, agreement_accepted_at, agreement_text, '
+      'reminders_muted_until, tenant_has_account';
 
   factory TenancyOverview.fromJson(Map<String, dynamic> json) {
     final status = json['rent_status'] as String?;
@@ -99,6 +111,8 @@ class TenancyOverview {
           ? null
           : DateTime.parse(json['agreement_accepted_at'] as String).toLocal(),
       agreementText: json['agreement_text'] as String?,
+      remindersPausedUntil: parseDbDateOrNull(json['reminders_muted_until'] as String?),
+      tenantHasAccount: json['tenant_has_account'] as bool? ?? false,
     );
   }
 }

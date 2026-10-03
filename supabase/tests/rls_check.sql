@@ -67,6 +67,13 @@ insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) value
   ('00000000-0000-0000-0000-000000000007', 'Extra@Test.local',      now(), '{"account_type": "landlord"}');
 insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000008', 'admin@test.local', now(), '{"account_type": "landlord"}');
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-000000000009', 'phone@test.local', now(), '{"phone": "+237677000111"}'),
+  ('00000000-0000-0000-0000-000000000010', 'badphone@test.local', now(), '{"phone": "12345"}');
+select pg_temp.ok('the phone number from sign-up is saved; a wrong one is ignored',
+  (select phone from public.profiles where id = '00000000-0000-0000-0000-000000000009') = '+237677000111'
+  and (select phone from public.profiles where id = '00000000-0000-0000-0000-000000000010') is null);
+delete from auth.users where id in ('00000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000010');
 
 select pg_temp.ok('profiles auto-created on sign-up',
   (select count(*) from public.profiles where id::text like '00000000-0000-0000-0000-00000000000%') = 8);
@@ -961,6 +968,114 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000006
 set local role authenticated;
 select pg_temp.fails('a stranger cannot log repairs',
   'select public.add_repair((select apartment_id from pg_temp.tina), ''x'')');
+
+-- ======================= NOTIFICATIONS ==========================================
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
+set local role authenticated;
+select public.register_device('tina-phone-token-123', 'android');
+select pg_temp.ok('tenant registers their phone and sees only their own',
+  (select count(*) from public.device_tokens) = 1);
+select pg_temp.ok('tenant sees only their own notifications (and has some)',
+  (select count(*) from public.notifications) > 0
+  and (select count(*) from public.notifications where user_id <> auth.uid()) = 0);
+select pg_temp.ok('tenant was told about the team''s reply and new bills',
+  exists (select 1 from public.notifications where title like 'New reply:%')
+  and exists (select 1 from public.notifications where title like 'New bill:%'));
+select pg_temp.ok('tenant got the announcement, saying which property it is from',
+  exists (select 1 from public.notifications where title = 'Announcement from Test Court: Water cut'));
+select pg_temp.fails('tenant cannot create notifications directly',
+  $q$ select public.notify(auth.uid(), null, null, 'x', 'x', 'x', null) $q$);
+select pg_temp.fails('tenant cannot run the reminder schedule',
+  $q$ select public.queue_scheduled_notifications('morning') $q$);
+select pg_temp.fails('tenant cannot send rent reminders',
+  'select public.send_rent_reminder((select id from pg_temp.tina))');
+select public.mark_notifications_read();
+select pg_temp.ok('tenant marks their notifications read',
+  (select count(*) from public.notifications where read_at is null) = 0);
+
+reset role;
+select pg_temp.ok('the team heard about the new issue; nobody about their own action',
+  exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000004'
+          and title like 'New issue at %')
+  and not exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000005'
+          and title like 'New issue at %'));
+select pg_temp.ok('a confirmed receipt is announced to staff who may see money only',
+  exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000001'
+          and title like 'Tina Tenant confirmed receipt %')
+  and not exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000004'
+          and title like '%confirmed receipt%'));
+select pg_temp.ok('receipt disputes go only to staff who may see money',
+  exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000003' and kind = 'dispute')
+  and not exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000004' and kind = 'dispute'));
+
+-- The schedule, run as the database (like pg_cron). Tina's paid-until = P.
+select set_config('request.jwt.claim.sub', '', true);  -- pg_cron runs as nobody
+create temp table pu as select paid_until as p from public.tenancies where id = (select id from pg_temp.tina);
+create function pg_temp.rent_count() returns bigint language sql as
+  $$ select count(*) from public.notifications where kind = 'rent' and tenancy_id = (select id from pg_temp.tina) $$;
+update public.tenancies set reminders_muted_until = null where id = (select id from pg_temp.tina);
+select public.queue_scheduled_notifications('morning', ((select p from pu) - interval '1 month')::date);
+select pg_temp.ok('one month before: a reminder at 8:00', pg_temp.rent_count() = 1);
+select public.queue_scheduled_notifications('morning', ((select p from pu) - interval '1 month')::date);
+select public.queue_scheduled_notifications('evening', ((select p from pu) - interval '1 month')::date);
+select pg_temp.ok('...only once, and not again at 20:00', pg_temp.rent_count() = 1);
+select public.queue_scheduled_notifications('morning', (select p from pu) - 5);
+select public.queue_scheduled_notifications('evening', (select p from pu) - 5);
+select pg_temp.ok('5 days before: at 20:00', pg_temp.rent_count() = 2);
+select public.queue_scheduled_notifications('morning', (select p from pu) - 4);
+select public.queue_scheduled_notifications('evening', (select p from pu) - 4);
+select pg_temp.ok('nothing on other days', pg_temp.rent_count() = 2);
+select public.queue_scheduled_notifications('morning', (select p from pu));
+select pg_temp.ok('on the due date: at 8:00', pg_temp.rent_count() = 3
+  and exists (select 1 from public.notifications where kind = 'rent' and title = 'Rent is due today'));
+select public.queue_scheduled_notifications('morning', (select p from pu) + 3);
+select public.queue_scheduled_notifications('evening', (select p from pu) + 3);
+select public.queue_scheduled_notifications('evening', (select p from pu) + 6);
+select public.queue_scheduled_notifications('morning', (select p from pu) + 6);
+select pg_temp.ok('every 3 days overdue, alternating 20:00 and 8:00', pg_temp.rent_count() = 5
+  and exists (select 1 from public.notifications where kind = 'rent' and body like '%(3 days ago)%'));
+update public.tenancies set reminders_muted_until = (select p from pu) + 10 where id = (select id from pg_temp.tina);
+select public.queue_scheduled_notifications('morning', (select p from pu) + 9);
+select public.queue_scheduled_notifications('evening', (select p from pu) + 9);
+select pg_temp.ok('a paused unit gets no reminders', pg_temp.rent_count() = 5);
+update public.tenancies set reminders_muted_until = null where id = (select id from pg_temp.tina);
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+create temp table due2 as select public.create_bill((select property_id from pg_temp.ids),
+  (select id from public.bill_types where name = 'Electricity' and property_id = (select property_id from pg_temp.ids)),
+  current_date + 2, 2500, 'Power - reminder test', null, array[(select id from pg_temp.tina)]) as id;
+select public.queue_scheduled_notifications('morning', current_date);
+select pg_temp.ok('bills: a reminder 2 days before the due date',
+  exists (select 1 from public.notifications where title = 'Bill due in 2 days: Power - reminder test'));
+
+-- A payment: the tenant is asked to confirm the receipt.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+select public.record_payment((select id from pg_temp.tina), 1);
+select pg_temp.ok('a new receipt asks the tenant to confirm it',
+  exists (select 1 from public.notifications where user_id = '00000000-0000-0000-0000-000000000005'
+          and kind = 'receipt' and title = 'Please confirm your receipt'
+          and body like '%confirm it within 24 hours.'));
+
+-- Staff: send now, pause
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000004', true);
+set local role authenticated;
+select public.send_rent_reminder((select id from pg_temp.tina));
+select pg_temp.fails('one reminder per 6 hours',
+  'select public.send_rent_reminder((select id from pg_temp.tina))');
+select pg_temp.ok('caretaker pauses reminders for a week',
+  public.set_rent_reminders_muted((select id from pg_temp.tina), 7) is not null);
+reset role;
+select pg_temp.ok('the manual reminder reached the tenant',
+  exists (select 1 from public.notifications where kind = 'rent_manual'
+          and user_id = '00000000-0000-0000-0000-000000000005'));
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000006', true);
+set local role authenticated;
+select pg_temp.fails('a stranger cannot pause reminders',
+  'select public.set_rent_reminders_muted((select id from pg_temp.tina), 30)');
+select pg_temp.ok('a stranger sees nobody''s phones or notifications',
+  (select count(*) from public.device_tokens) = 0
+  and (select count(*) from public.notifications where user_id <> auth.uid()) = 0);
 
 -- ======================= SUPER ADMIN (read-only) ================================
 reset role;

@@ -234,7 +234,7 @@ class _RentalScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Call your landlord', style: Theme.of(context).textTheme.titleSmall),
-                          Text(phone, style: Theme.of(context).textTheme.bodySmall),
+                          Text(formatPhone(phone), style: Theme.of(context).textTheme.bodySmall),
                         ],
                       ),
                     ),

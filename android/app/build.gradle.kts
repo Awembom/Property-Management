@@ -2,10 +2,12 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Reads google-services.json (Firebase project homedly-4a906) for push notifications.
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.rental_app"
+    namespace = "com.awembom.rental"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +17,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.rental_app"
+        // The app's permanent ID on phones and Google Play; Firebase is registered with it.
+        applicationId = "com.awembom.rental"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

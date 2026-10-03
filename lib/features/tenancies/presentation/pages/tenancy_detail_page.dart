@@ -17,6 +17,7 @@ import 'package:rental_app/features/tenancies/providers/tenancies_providers.dart
 import 'package:rental_app/features/tenant_access/presentation/widgets/tenant_app_access_card.dart';
 import 'package:rental_app/shared/utils/dates.dart';
 import 'package:rental_app/shared/utils/money.dart';
+import 'package:rental_app/shared/utils/phone.dart';
 import 'package:rental_app/shared/widgets/app_card.dart';
 import 'package:rental_app/shared/widgets/async_error_view.dart';
 import 'package:rental_app/shared/widgets/icon_bubble.dart';
@@ -206,7 +207,7 @@ class TenancyDetailPage extends ConsumerWidget {
                     icon: Icons.phone_rounded,
                     color: AppColors.paid,
                     label: 'Phone',
-                    value: tenant.phone ?? 'Not given',
+                    value: tenant.phone == null ? 'Not given' : formatPhone(tenant.phone!),
                   ),
                   _InfoRow(
                     icon: Icons.alternate_email_rounded,
