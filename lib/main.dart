@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rental_app/core/offline/sync_controller.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/core/theme/app_theme.dart';
 import 'package:rental_app/features/auth/data/auth_repository.dart';
 import 'package:rental_app/features/auth/providers/auth_providers.dart';
+import 'package:rental_app/shared/widgets/offline_banner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -38,27 +40,42 @@ String _requireEnv(String key) {
   return value;
 }
 
-/// The root widget. A ConsumerWidget (instead of StatelessWidget) can read
-/// Riverpod providers via `ref`; here it reads the router.
-class RentalApp extends ConsumerWidget {
+/// The root widget. A Consumer widget can read Riverpod providers via `ref`;
+/// it's stateful so it can notice the app coming back to the front.
+class RentalApp extends ConsumerStatefulWidget {
   const RentalApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // "Contact first, link later": each time a session starts (app opened
-    // while logged in, or a fresh login), link any tenant contacts that
-    // match this user's confirmed email. Runs in the background; a failure
-    // here is harmless and simply retried next time.
+  ConsumerState<RentalApp> createState() => _RentalAppState();
+}
+
+class _RentalAppState extends ConsumerState<RentalApp> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back in front: send what waited offline and refresh the saved data.
+    _lifecycle = AppLifecycleListener(onResume: () => ref.read(syncControllerProvider).syncNow());
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // When the app starts with a saved login, make sure that account still
+    // exists (e.g. it was deleted in Supabase); if not, show the login screen.
     ref.listen(authStateProvider, (previous, next) {
-      final authState = next.value;
-      final sessionStarted = authState?.event == AuthChangeEvent.initialSession ||
-          authState?.event == AuthChangeEvent.signedIn;
-      if (sessionStarted && authState?.session != null) {
-        ref.read(authRepositoryProvider).linkTenantRecords().catchError(
-              (Object e) => debugPrint('linkTenantRecords failed: $e'),
-            );
+      if (next.value?.event == AuthChangeEvent.initialSession) {
+        ref.read(authRepositoryProvider).dropLoginIfAccountGone();
       }
     });
+    // Starts the offline sync (after login, when the connection returns).
+    ref.watch(syncControllerProvider);
 
     return MaterialApp.router(
       title: 'Rental App',
@@ -66,6 +83,8 @@ class RentalApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       routerConfig: ref.watch(appRouterProvider),
+      // A slim "Offline" strip above every screen when there's no connection.
+      builder: (context, child) => OfflineBanner(child: child ?? const SizedBox()),
     );
   }
 }

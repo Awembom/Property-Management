@@ -1,3 +1,5 @@
+import 'package:rental_app/features/properties/data/caretaker_permissions.dart';
+
 /// A staff member's role on a property (the `membership_role` enum in Postgres).
 enum MembershipRole {
   owner,
@@ -26,23 +28,38 @@ enum MembershipRole {
 /// the RLS policies in the database (see CLAUDE.md, "Roles and Permissions").
 /// If the UI got this wrong, the database would still refuse the action.
 class PropertyAccess {
-  const PropertyAccess({required this.role, required this.canRecordPaymentsFlag});
+  const PropertyAccess({
+    required this.role,
+    this.canRecordPaymentsFlag = false,
+    this.permissions = CaretakerPermissions.none,
+  });
 
   final MembershipRole role;
 
-  /// The caretaker `can_record_payments` toggle from the membership.
+  /// The caretaker `can_record_payments` toggle (kept for older callers;
+  /// also part of [permissions]).
   final bool canRecordPaymentsFlag;
 
-  bool get _ownerOrManager =>
-      role == MembershipRole.owner || role == MembershipRole.manager;
+  /// A caretaker's switches (ignored for owners and managers).
+  final CaretakerPermissions permissions;
 
-  bool get canEditProperty => _ownerOrManager;
-  bool get canDeleteProperty => role == MembershipRole.owner;
-  bool get canManageMembers => role == MembershipRole.owner;
-  bool get canManageApartments => _ownerOrManager;
-  bool get canManageTenancies => _ownerOrManager;
-  bool get canRecordPayments => _ownerOrManager || canRecordPaymentsFlag;
+  bool get isOwner => role == MembershipRole.owner;
+  bool get _ownerOrManager => isOwner || role == MembershipRole.manager;
 
-  /// Rent amounts, totals, repair costs. Caretakers never see money.
-  bool get canSeeMoney => _ownerOrManager;
+  bool get canEditProperty => _ownerOrManager || permissions.manageApartments;
+  bool get canDeleteProperty => isOwner;
+  bool get canManageMembers => isOwner || permissions.manageTeam;
+  bool get canManageApartments => _ownerOrManager || permissions.manageApartments;
+  bool get canManageTenancies => _ownerOrManager || permissions.manageTenancies;
+  bool get canRecordPayments =>
+      _ownerOrManager || canRecordPaymentsFlag || permissions.recordPayments;
+
+  /// Rent amounts, totals, receipts. Caretakers only with the switch.
+  bool get canSeeMoney => _ownerOrManager || permissions.seeMoney;
+
+  /// Voiding a payment needs both money and payments.
+  bool get canVoidPayments => canSeeMoney && canRecordPayments;
+
+  /// Water, Electricity and custom bill types = property setup.
+  bool get canManageBillTypes => canManageApartments;
 }

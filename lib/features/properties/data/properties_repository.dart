@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rental_app/core/offline/offline_cache.dart';
 import 'package:rental_app/core/supabase/supabase_providers.dart';
+import 'package:rental_app/features/properties/data/caretaker_permissions.dart';
 import 'package:rental_app/features/properties/data/member.dart';
 import 'package:rental_app/features/properties/data/membership_role.dart';
 import 'package:rental_app/features/properties/data/property.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Columns we load for a property, embedded in a memberships query.
-const _propertyColumns = 'id, name, address, currency, grace_period_days';
+const _propertyColumns = 'id, name, address, currency, grace_period_days, contact_phone, agreement_text';
 
 /// All Supabase calls for properties and their members.
 ///
@@ -14,9 +16,12 @@ const _propertyColumns = 'id, name, address, currency, grace_period_days';
 /// isn't allowed to do something, these calls throw with the database's
 /// message, e.g. "A property must keep at least one owner."
 class PropertiesRepository {
-  PropertiesRepository(this._client);
+  PropertiesRepository(this._client, this._cache);
 
   final SupabaseClient _client;
+
+  /// Keeps what was loaded, for offline use (see OfflineCache).
+  final OfflineCache _cache;
 
   String get _userId {
     final user = _client.auth.currentUser;
@@ -30,10 +35,13 @@ class PropertiesRepository {
   /// We start from `memberships` (my rows) and embed the property, so the
   /// role comes back in the same query.
   Future<List<MyProperty>> fetchMyProperties() async {
-    final rows = await _client
-        .from('memberships')
-        .select('role, can_record_payments, property:properties($_propertyColumns)')
-        .eq('user_id', _userId);
+    final rows = await _cache.rows(
+      'properties/mine',
+      () => _client
+          .from('memberships')
+          .select('role, ${CaretakerPermissions.columns}, property:properties($_propertyColumns)')
+          .eq('user_id', _userId),
+    );
 
     final properties = rows.map(MyProperty.fromMembershipJson).toList()
       ..sort((a, b) => a.property.name.toLowerCase().compareTo(b.property.name.toLowerCase()));
@@ -42,12 +50,15 @@ class PropertiesRepository {
 
   /// One property with my role on it. Throws if I'm not a member.
   Future<MyProperty> fetchMyProperty(String propertyId) async {
-    final row = await _client
-        .from('memberships')
-        .select('role, can_record_payments, property:properties($_propertyColumns)')
-        .eq('user_id', _userId)
-        .eq('property_id', propertyId)
-        .maybeSingle();
+    final row = await _cache.row(
+      'property/$propertyId',
+      () => _client
+          .from('memberships')
+          .select('role, ${CaretakerPermissions.columns}, property:properties($_propertyColumns)')
+          .eq('user_id', _userId)
+          .eq('property_id', propertyId)
+          .maybeSingle(),
+    );
     if (row == null) throw StateError('Property not found');
     return MyProperty.fromMembershipJson(row);
   }
@@ -89,13 +100,28 @@ class PropertiesRepository {
     }
   }
 
+  /// Sets the tenancy agreement of the property ([apartmentId] null) or of
+  /// one unit. Empty text = back to the default. Returns how many current
+  /// tenants must accept it again.
+  Future<int> setAgreement({required String propertyId, String? apartmentId, required String text}) async {
+    final count = await _client.rpc('set_agreement', params: {
+      'p_property_id': propertyId,
+      'p_apartment_id': apartmentId,
+      'p_text': text,
+    });
+    return count as int;
+  }
+
   // ---------- members ----------
 
   Future<List<Member>> fetchMembers(String propertyId) async {
-    final rows = await _client
-        .from('memberships')
-        .select('id, user_id, role, can_record_payments, profile:profiles(full_name, email)')
-        .eq('property_id', propertyId);
+    final rows = await _cache.rows(
+      'members/$propertyId',
+      () => _client
+          .from('memberships')
+          .select('id, user_id, role, ${CaretakerPermissions.columns}, profile:profiles(full_name, username)')
+          .eq('property_id', propertyId),
+    );
 
     // Owners first, then managers, then caretakers; alphabetical within each.
     final members = rows.map(Member.fromJson).toList()
@@ -107,36 +133,38 @@ class PropertiesRepository {
     return members;
   }
 
-  /// Adds someone who already has an account, by email (owners only).
-  Future<void> addMember({
+  /// Adds someone who already has an account, by username (owners only).
+  /// Returns the new membership's id.
+  Future<String> addMember({
     required String propertyId,
-    required String email,
+    required String username,
     required MembershipRole role,
     required bool canRecordPayments,
   }) async {
-    await _client.rpc('add_property_member', params: {
+    final row = await _client.rpc('add_property_member', params: {
       'p_property_id': propertyId,
-      'p_email': email,
+      'p_username': username,
       'p_role': role.toJson(),
       'p_can_record_payments': canRecordPayments,
     });
+    return (row as Map<String, dynamic>)['id'] as String;
   }
 
   Future<void> updateMember({
     required String membershipId,
     required MembershipRole role,
-    required bool canRecordPayments,
+    required CaretakerPermissions permissions,
   }) async {
     final updated = await _client
         .from('memberships')
         .update({
           'role': role.toJson(),
-          // The toggle only applies to caretakers.
-          'can_record_payments': role == MembershipRole.caretaker && canRecordPayments,
+          // The switches only mean something for caretakers.
+          ...(role == MembershipRole.caretaker ? permissions : CaretakerPermissions.none).toJson(),
         })
         .eq('id', membershipId)
         .select('id');
-    if (updated.isEmpty) throw StateError('Only owners can change members.');
+    if (updated.isEmpty) throw StateError('You don\'t have permission to change this member.');
   }
 
   Future<void> removeMember(String membershipId) async {
@@ -150,5 +178,5 @@ class PropertiesRepository {
 }
 
 final propertiesRepositoryProvider = Provider<PropertiesRepository>((ref) {
-  return PropertiesRepository(ref.watch(supabaseClientProvider));
+  return PropertiesRepository(ref.watch(supabaseClientProvider), ref.watch(offlineCacheProvider));
 });

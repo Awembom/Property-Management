@@ -2,103 +2,76 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rental_app/core/router/app_router.dart';
-import 'package:rental_app/features/properties/data/property.dart';
-import 'package:rental_app/features/properties/presentation/widgets/role_chip.dart';
+import 'package:rental_app/core/theme/app_colors.dart';
+import 'package:rental_app/features/auth/data/account_type.dart';
+import 'package:rental_app/features/auth/providers/auth_providers.dart';
+import 'package:rental_app/features/dashboard/providers/dashboard_providers.dart';
+import 'package:rental_app/features/properties/presentation/widgets/property_card.dart';
 import 'package:rental_app/features/properties/providers/properties_providers.dart';
 import 'package:rental_app/shared/widgets/async_error_view.dart';
+import 'package:rental_app/shared/widgets/empty_state.dart';
 
-/// Home screen for staff: every property I'm a member of.
+/// The Properties tab: every property I'm on the team of, as cards with
+/// occupancy. Landlords also get "Add property".
 class PropertiesPage extends ConsumerWidget {
   const PropertiesPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final properties = ref.watch(myPropertiesProvider);
+    // Occupancy numbers; the cards show without them while they load.
+    final dashboard = ref.watch(dashboardProvider).value;
+    // Only landlord accounts add properties (the database refuses others too).
+    final isLandlord =
+        ref.watch(myProfileProvider).value?.accountType == AccountType.landlord;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My properties'),
-        actions: [
-          IconButton(
-            tooltip: 'My profile',
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () => context.push(AppRoutes.profile),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Properties')),
       body: properties.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AsyncErrorView(
           error: error,
           onRetry: () => ref.invalidate(myPropertiesProvider),
         ),
-        data: (properties) => properties.isEmpty
-            ? const _EmptyState()
-            // Pull down to reload.
-            : RefreshIndicator(
-                onRefresh: () => ref.refresh(myPropertiesProvider.future),
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        data: (properties) => RefreshIndicator(
+          onRefresh: () => ref.refresh(myPropertiesProvider.future),
+          child: properties.isEmpty
+              ? ListView(
+                  children: [
+                    EmptyState(
+                      icon: Icons.apartment_rounded,
+                      color: AppColors.primary,
+                      title: 'No properties yet',
+                      message: isLandlord
+                          ? 'Add your first property to manage its apartments and tenants.'
+                          : 'When an owner adds you to their team, the property appears here.',
+                      actionLabel: isLandlord ? 'Add property' : null,
+                      onAction: isLandlord ? () => context.push(AppRoutes.newProperty) : null,
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                   itemCount: properties.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) =>
-                      _PropertyCard(myProperty: properties[index]),
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
+                    final my = properties[index];
+                    return PropertyCard(
+                      myProperty: my,
+                      stats: dashboard?.statsFor(my.property.id),
+                      onTap: () => context.push(AppRoutes.propertyDetail(my.property.id)),
+                    );
+                  },
                 ),
-              ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.newProperty),
-        icon: const Icon(Icons.add),
-        label: const Text('Add property'),
-      ),
-    );
-  }
-}
-
-class _PropertyCard extends StatelessWidget {
-  const _PropertyCard({required this.myProperty});
-
-  final MyProperty myProperty;
-
-  @override
-  Widget build(BuildContext context) {
-    final property = myProperty.property;
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: const CircleAvatar(child: Icon(Icons.apartment_rounded)),
-        title: Text(property.name),
-        subtitle: Text(property.address ?? 'No address'),
-        trailing: RoleChip(role: myProperty.access.role),
-        onTap: () => context.push(AppRoutes.propertyDetail(property.id)),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.home_work_outlined, size: 64),
-            const SizedBox(height: 16),
-            Text('No properties yet', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            const Text(
-              'Add your first property to start managing apartments and tenants. '
-              'If someone added you to their property, it will show up here.',
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
+      floatingActionButton: isLandlord && (properties.value?.isNotEmpty ?? false)
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(AppRoutes.newProperty),
+              icon: const Icon(Icons.add),
+              label: const Text('Add property'),
+            )
+          : null,
     );
   }
 }

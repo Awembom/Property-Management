@@ -1,3 +1,4 @@
+import 'package:rental_app/features/properties/data/caretaker_permissions.dart';
 import 'package:rental_app/features/properties/data/membership_role.dart';
 
 /// A row from the `properties` table.
@@ -8,6 +9,8 @@ class Property {
     required this.currency,
     required this.gracePeriodDays,
     this.address,
+    this.contactPhone,
+    this.agreementText,
   });
 
   final String id;
@@ -20,6 +23,12 @@ class Property {
   /// Days before the due date when rent shows as "Due soon".
   final int gracePeriodDays;
 
+  /// The number tenants tap to call (owner's or a caretaker's).
+  final String? contactPhone;
+
+  /// The property's tenancy agreement; null = the app's default text.
+  final String? agreementText;
+
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
       id: json['id'] as String,
@@ -27,6 +36,8 @@ class Property {
       address: json['address'] as String?,
       currency: json['currency'] as String,
       gracePeriodDays: json['grace_period_days'] as int,
+      contactPhone: json['contact_phone'] as String?,
+      agreementText: json['agreement_text'] as String?,
     );
   }
 
@@ -37,6 +48,7 @@ class Property {
       'address': address,
       'currency': currency,
       'grace_period_days': gracePeriodDays,
+      'contact_phone': contactPhone,
     };
   }
 }
@@ -56,6 +68,7 @@ class MyProperty {
       access: PropertyAccess(
         role: MembershipRole.fromJson(json['role'] as String),
         canRecordPaymentsFlag: json['can_record_payments'] as bool,
+        permissions: CaretakerPermissions.fromJson(json),
       ),
     );
   }

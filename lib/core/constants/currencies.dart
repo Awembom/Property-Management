@@ -14,3 +14,14 @@ const Map<String, String> kCurrencies = {
   'EUR': 'Euro',
   'GBP': 'British pound',
 };
+
+/// How many digits after the decimal point each currency uses.
+/// CFA francs have no cents, so 150000 XAF is stored as 150000.
+/// The others have cents: 25.50 USD is stored as 2550.
+const Map<String, int> kCurrencyDecimals = {
+  'XAF': 0,
+  'XOF': 0,
+};
+
+/// Decimal digits for [currency]; 2 unless listed in [kCurrencyDecimals].
+int currencyDecimals(String currency) => kCurrencyDecimals[currency] ?? 2;

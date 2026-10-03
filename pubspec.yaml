@@ -39,6 +39,17 @@ dependencies:
   go_router: ^18.0.1
   intl: ^0.20.3
   flutter_dotenv: ^6.0.1
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  cryptography: ^2.9.0
+  mobile_scanner: ^7.4.2
+  barcode_widget: ^2.0.4
+  sqflite: ^2.4.4
+  flutter_secure_storage: ^11.2.0
+  connectivity_plus: ^7.3.2
+  path: ^1.9.1
+  http: ^1.6.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +76,20 @@ flutter:
   # Loaded at startup by flutter_dotenv (see lib/main.dart).
   assets:
     - .env
+
+  # Poppins (Open Font License, see assets/fonts/OFL.txt), the app's font.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Poppins-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

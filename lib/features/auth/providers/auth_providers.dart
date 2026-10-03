@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rental_app/core/offline/outbox.dart';
 import 'package:rental_app/core/supabase/supabase_providers.dart';
 import 'package:rental_app/features/auth/data/profile.dart';
 import 'package:rental_app/features/auth/data/profile_repository.dart';
@@ -27,18 +28,30 @@ class MyProfileNotifier extends AsyncNotifier<Profile> {
     return ref.read(profileRepositoryProvider).fetchMyProfile();
   }
 
-  /// Saves changes, then reloads the profile from the database.
-  /// Throws on failure so the screen can show an error message.
-  Future<void> save({required String fullName, required String phone}) async {
+  /// Saves my name and phone. Online: straight to the database, then
+  /// reloads. Offline: kept on the phone (the profile shows it right away)
+  /// and sent automatically when the connection is back.
+  /// Returns true if it was sent now, false if it's waiting.
+  /// Throws if the server refuses, so the screen can show a message.
+  Future<bool> save({required String fullName, required String phone}) async {
     final repository = ref.read(profileRepositoryProvider);
     final current = await future;
-    await repository.updateMyProfile(
-      Profile(
-        id: current.id,
-        fullName: fullName.trim().isEmpty ? null : fullName.trim(),
-        phone: phone.trim().isEmpty ? null : phone.trim(),
-      ),
+    final updated = Profile(
+      id: current.id,
+      username: current.username,
+      accountType: current.accountType,
+      fullName: fullName.trim().isEmpty ? null : fullName.trim(),
+      phone: phone.trim().isEmpty ? null : phone.trim(),
     );
-    state = AsyncData(await repository.fetchMyProfile());
+    final sent = await ref
+        .read(outboxProvider.notifier)
+        .sendOrQueue(OutboxItem.updateProfile(fullName: updated.fullName, phone: updated.phone));
+    if (sent) {
+      state = AsyncData(await repository.fetchMyProfile());
+    } else {
+      await repository.saveLocally(updated);
+      state = AsyncData(updated);
+    }
+    return sent;
   }
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rental_app/core/constants/currencies.dart';
 import 'package:rental_app/core/router/app_router.dart';
 import 'package:rental_app/features/properties/data/properties_repository.dart';
+import 'package:rental_app/features/auth/providers/auth_providers.dart';
 import 'package:rental_app/features/properties/data/property.dart';
 import 'package:rental_app/features/properties/providers/properties_providers.dart';
 import 'package:rental_app/shared/widgets/async_error_view.dart';
@@ -57,6 +58,10 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
   late final _addressController = TextEditingController(text: widget.existing?.address);
   late final _graceController =
       TextEditingController(text: '${widget.existing?.gracePeriodDays ?? 7}');
+  // The number tenants tap to call. A new property starts with my own phone.
+  late final _phoneController = TextEditingController(
+    text: widget.existing == null ? ref.read(myProfileProvider).value?.phone : widget.existing!.contactPhone,
+  );
   late String? _currency = widget.existing?.currency;
   bool _saving = false;
 
@@ -67,6 +72,7 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
     _nameController.dispose();
     _addressController.dispose();
     _graceController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -78,6 +84,7 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
     final name = _nameController.text.trim();
     final address = _addressController.text.trim().isEmpty ? null : _addressController.text.trim();
     final graceDays = int.parse(_graceController.text);
+    final phone = _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim();
 
     try {
       if (_isEditing) {
@@ -88,6 +95,7 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
           address: address,
           currency: _currency!,
           gracePeriodDays: graceDays,
+          contactPhone: phone,
         ));
         ref.invalidate(myPropertyProvider(existing.id));
         ref.invalidate(myPropertiesProvider);
@@ -99,6 +107,16 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
           currency: _currency!,
           gracePeriodDays: graceDays,
         );
+        if (phone != null) {
+          await repository.updateProperty(Property(
+            id: created.id,
+            name: created.name,
+            address: created.address,
+            currency: created.currency,
+            gracePeriodDays: created.gracePeriodDays,
+            contactPhone: phone,
+          ));
+        }
         ref.invalidate(myPropertiesProvider);
         // Replace the form with the new property's page (Back returns to the list).
         if (mounted) context.pushReplacement(AppRoutes.propertyDetail(created.id));
@@ -127,7 +145,6 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
               decoration: const InputDecoration(
                 labelText: 'Property name',
                 hintText: 'e.g. Sunset Apartments',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -137,7 +154,17 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
               maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Address (optional)',
-                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Contact phone for tenants',
+                hintText: 'Your number or a caretaker\'s',
+                helperText: 'Tenants tap it in the app to call.',
+                prefixIcon: Icon(Icons.phone_rounded),
               ),
             ),
             const SizedBox(height: 16),
@@ -149,7 +176,6 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
               decoration: const InputDecoration(
                 labelText: 'Currency',
                 helperText: 'Used for all rent and bills in this property.',
-                border: OutlineInputBorder(),
               ),
               items: [
                 for (final entry in kCurrencies.entries)
@@ -172,7 +198,6 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
               decoration: const InputDecoration(
                 labelText: '"Due soon" warning (days)',
                 helperText: 'Rent shows as "Due soon" this many days before it\'s due.',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 32),

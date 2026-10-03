@@ -68,7 +68,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
             TextField(
               autofocus: true,
               onChanged: (value) => setState(() => _typed = value),
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              decoration: const InputDecoration(),
             ),
           ],
         ],
